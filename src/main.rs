@@ -1,9 +1,6 @@
 use std::io::{self, Read};
 
-use syn::parse_file;
-use syn::spanned::Spanned;
-use syn::visit::Visit;
-use syn::Macro;
+use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
 // TODO: Check that the html macro is actually from maud and not some other html library?
 
