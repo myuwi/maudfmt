@@ -79,8 +79,6 @@ fn main() {
 
             visitor.visit_file(&syntax_tree);
 
-            dbg!(&visitor.macro_lines);
-
             let formatted_code = format_code(&code, visitor.macro_lines);
             print!("{}", formatted_code);
         }
