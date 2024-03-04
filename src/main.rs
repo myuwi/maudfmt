@@ -13,7 +13,7 @@ impl<'ast> Visit<'ast> for MacroVisitor {
         if macro_item.path.get_ident().is_some_and(|n| n == "html") {
             let start = macro_item.span().start().line;
             let end = macro_item.span().end().line;
-            self.macro_lines.push((start, end - 1));
+            self.macro_lines.push((start, end));
         }
     }
 }
@@ -24,13 +24,13 @@ fn format_code(input: &str, ranges: Vec<(usize, usize)>) -> String {
     let mut out = String::new();
     let mut indent_level: usize = 0;
 
-    for (line_number, line) in input.lines().enumerate() {
+    for (line_number, line) in (1..).zip(input.lines()) {
         let maybe_range = ranges
             .iter()
-            .find(|r| line_number >= r.0 - 1 && line_number < r.1);
+            .find(|r| line_number >= r.0 && line_number <= r.1);
 
         if let Some(range) = maybe_range {
-            if range.0 - 1 == line_number {
+            if range.0 == line_number {
                 let whitespace: usize = line
                     .chars()
                     .take_while(|ch| ch.is_whitespace() && *ch != '\n')
