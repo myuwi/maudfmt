@@ -14,10 +14,12 @@ use nom::{
 // TODO: Splices
 // TODO: Toggles
 // TODO: Control structures
-// TODO: Preserve newlines
 
 #[derive(Clone, Debug)]
-struct Block(Markup);
+struct Block {
+    newline: bool,
+    markup: Markup,
+}
 
 #[derive(Clone, Debug)]
 enum ElementBody {
@@ -67,7 +69,10 @@ fn string(input: &str) -> IResult<&str, String> {
 fn block(input: &str) -> IResult<&str, Block> {
     delimited(
         preceded(multispace0, char('{')),
-        map(markup, Block),
+        map(tuple((multispace0, markup)), |(whitespace, markup)| Block {
+            newline: whitespace.contains('\n'),
+            markup,
+        }),
         preceded(multispace0, char('}')),
     )(input)
 }
@@ -156,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_parse_block_element() {
-        let expected = r#"Ok(("", Element { name: "h1", attrs: [], body: Block(Block(Markup([Str("Poem")]))) }))"#;
+        let expected = r#"Ok(("", Element { name: "h1", attrs: [], body: Block(Block { newline: false, markup: Markup([Str("Poem")]) }) }))"#;
 
         assert_eq!(format!("{:?}", element(r#"h1 { "Poem" }"#)), expected);
         assert_eq!(format!("{:?}", element(r#"h1{"Poem"}"#)), expected);
@@ -165,8 +170,7 @@ mod tests {
                 "{:?}",
                 element(
                     r#"h1
-                    {
-                    "Poem"
+                    {"Poem"
                     }"#
                 )
             ),
@@ -194,7 +198,19 @@ mod tests {
     fn test_parse_block() {
         assert_eq!(
             format!("{:?}", markup(r#"{ input; }"#)),
-            r#"Ok(("", Markup([Block(Block(Markup([Element(Element { name: "input", attrs: [], body: Void })])))])))"#
+            r#"Ok(("", Markup([Block(Block { newline: false, markup: Markup([Element(Element { name: "input", attrs: [], body: Void })]) })])))"#
+        );
+
+        assert_eq!(
+            format!(
+                "{:?}",
+                block(
+                    r#"{
+                    input;
+                }"#
+                )
+            ),
+            r#"Ok(("", Block { newline: true, markup: Markup([Element(Element { name: "input", attrs: [], body: Void })]) }))"#
         );
     }
 
