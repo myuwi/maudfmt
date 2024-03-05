@@ -16,45 +16,45 @@ use nom::{
 // TODO: Control structures
 
 #[derive(Clone, Debug)]
-struct Block {
-    newline: bool,
-    markup: Markup,
+pub struct Block {
+    pub newline: bool,
+    pub markup: Markup,
 }
 
 #[derive(Clone, Debug)]
-enum ElementBody {
+pub enum ElementBody {
     Void,
     Block(Block),
 }
 
 #[derive(Clone, Debug)]
-enum AttributeValue {
+pub enum AttributeValue {
     String(String),
     Empty,
 }
 
 #[derive(Clone, Debug)]
-struct Attribute {
-    name: String,
-    value: AttributeValue,
+pub struct Attribute {
+    pub name: String,
+    pub value: AttributeValue,
 }
 
 #[derive(Clone, Debug)]
-struct Element {
-    name: String,
-    attrs: Vec<Attribute>,
-    body: ElementBody,
+pub struct Element {
+    pub name: String,
+    pub attrs: Vec<Attribute>,
+    pub body: ElementBody,
 }
 
 #[derive(Clone, Debug)]
-enum Node {
+pub enum Node {
     Element(Element),
     Block(Block),
     Str(String),
 }
 
 #[derive(Clone, Debug)]
-struct Markup(Vec<Node>);
+pub struct Markup(pub Vec<Node>);
 
 fn string(input: &str) -> IResult<&str, String> {
     map(
@@ -142,17 +142,15 @@ fn markup(input: &str) -> IResult<&str, Markup> {
     )(input)
 }
 
-pub fn parse(src: &str) -> Vec<String> {
-    let result = markup(src);
+pub fn parse(src: &str) -> Markup {
+    // TODO: Error handling
+    let (remaining, result) = markup(src).unwrap();
 
-    match result {
-        Ok(res) => {
-            dbg!(res);
-        }
-        Err(err) => eprintln!("{}", err),
+    if !remaining.is_empty() {
+        panic!("Unhandled syntax");
     }
 
-    vec![]
+    result
 }
 
 #[cfg(test)]

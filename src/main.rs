@@ -1,70 +1,64 @@
-use std::io::{self, Read};
+use std::{
+    io::{self, Read},
+    ops::Range,
+};
 
 use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
+mod formatter;
 mod parser;
 
-use crate::parser::parse;
+use crate::{formatter::format, parser::parse};
 
-// TODO: Check that the html macro is actually from maud and not some other html library?
+const TAB_SIZE: usize = 4;
+
+struct MacroLocation {
+    start_line: usize,
+    byte_range: Range<usize>,
+}
 
 struct MacroVisitor {
-    macro_lines: Vec<(usize, usize)>,
+    locations: Vec<MacroLocation>,
 }
 
 impl<'ast> Visit<'ast> for MacroVisitor {
     fn visit_macro(&mut self, macro_item: &'ast Macro) {
-        if macro_item.path.get_ident().is_some_and(|n| n == "html") {
-            let start = macro_item.span().start().line;
-            let end = macro_item.span().end().line;
-            self.macro_lines.push((start, end));
+        if let Some(ident) = macro_item.path.segments.span().source_text() {
+            if ident.ends_with("html") {
+                let span = macro_item.span();
+                let start = span.start().line;
+                let range = span.byte_range();
+
+                self.locations.push(MacroLocation {
+                    start_line: start,
+                    byte_range: (range.start + ident.len() + 1)..range.end,
+                });
+            }
         }
     }
 }
 
-const INDENT_AMOUNT: usize = 4;
+fn format_code(input: &str, location: Vec<MacroLocation>) -> String {
+    let mut out = input.to_string();
 
-fn format_code(input: &str, ranges: Vec<(usize, usize)>) -> String {
-    let mut out = String::new();
-    let mut indent_level: usize = 0;
+    for location in location.iter().rev() {
+        let whitespace: usize = out
+            .lines()
+            .nth(location.start_line - 1)
+            .unwrap()
+            .chars()
+            .take_while(|ch| ch.is_whitespace() && *ch != '\n')
+            .map(|ch| ch.len_utf8())
+            .sum();
 
-    for (line_number, line) in (1..).zip(input.lines()) {
-        let maybe_range = ranges
-            .iter()
-            .find(|r| line_number >= r.0 && line_number <= r.1);
+        let indentation = whitespace / TAB_SIZE;
 
-        if let Some(range) = maybe_range {
-            if range.0 == line_number {
-                let whitespace: usize = line
-                    .chars()
-                    .take_while(|ch| ch.is_whitespace() && *ch != '\n')
-                    .map(|ch| ch.len_utf8())
-                    .sum();
+        let content = &out[location.byte_range.clone()];
 
-                indent_level = whitespace / INDENT_AMOUNT + 1;
+        let markup = parse(content.trim());
+        let formatted = format(markup, indentation);
 
-                out.push_str(line);
-                out.push('\n');
-                continue;
-            }
-
-            let trimmed_line = line.trim();
-
-            if trimmed_line.starts_with('}') {
-                indent_level = indent_level.saturating_sub(1);
-            }
-
-            out.push_str(&" ".repeat(indent_level * INDENT_AMOUNT));
-            out.push_str(trimmed_line);
-            out.push('\n');
-
-            if trimmed_line.ends_with('{') {
-                indent_level += 1;
-            }
-        } else {
-            out.push_str(line);
-            out.push('\n');
-        }
+        out.replace_range(location.byte_range.clone(), &format!(" {}", &formatted));
     }
 
     out
@@ -78,12 +72,12 @@ fn main() {
             let ast = parse_file(&code).unwrap();
 
             let mut visitor = MacroVisitor {
-                macro_lines: Vec::new(),
+                locations: Vec::new(),
             };
 
             visitor.visit_file(&ast);
 
-            let formatted_code = format_code(&code, visitor.macro_lines);
+            let formatted_code = format_code(&code, visitor.locations);
             print!("{}", formatted_code);
         }
         Err(err) => eprintln!("Error reading input: {}", err),
