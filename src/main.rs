@@ -2,6 +2,10 @@ use std::io::{self, Read};
 
 use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
+mod parser;
+
+use crate::parser::parse;
+
 // TODO: Check that the html macro is actually from maud and not some other html library?
 
 struct MacroVisitor {
@@ -71,13 +75,13 @@ fn main() {
 
     match io::stdin().read_to_string(&mut code) {
         Ok(_) => {
-            let syntax_tree = parse_file(&code).unwrap();
+            let ast = parse_file(&code).unwrap();
 
             let mut visitor = MacroVisitor {
                 macro_lines: Vec::new(),
             };
 
-            visitor.visit_file(&syntax_tree);
+            visitor.visit_file(&ast);
 
             let formatted_code = format_code(&code, visitor.macro_lines);
             print!("{}", formatted_code);
