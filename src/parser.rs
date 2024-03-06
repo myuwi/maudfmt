@@ -1,8 +1,12 @@
+use std::process::exit;
+
+use miette::{miette, LabeledSpan, Severity};
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
     character::complete::{alpha1, alphanumeric1, char, multispace0, multispace1, none_of, one_of},
-    combinator::{map, recognize, value},
+    combinator::{cut, map, recognize, value},
+    error::VerboseError,
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
     IResult,
@@ -56,7 +60,7 @@ pub enum Node {
 #[derive(Clone, Debug)]
 pub struct Markup(pub Vec<Node>);
 
-fn string(input: &str) -> IResult<&str, String> {
+fn string(input: &str) -> IResult<&str, String, VerboseError<&str>> {
     map(
         preceded(
             char('"'),
@@ -66,54 +70,54 @@ fn string(input: &str) -> IResult<&str, String> {
     )(input)
 }
 
-fn block(input: &str) -> IResult<&str, Block> {
+fn block(input: &str) -> IResult<&str, Block, VerboseError<&str>> {
     delimited(
         preceded(multispace0, char('{')),
         map(tuple((multispace0, markup)), |(whitespace, markup)| Block {
             newline: whitespace.contains('\n'),
             markup,
         }),
-        preceded(multispace0, char('}')),
+        preceded(multispace0, cut(char('}'))),
     )(input)
 }
 
-fn void(input: &str) -> IResult<&str, ()> {
+fn void(input: &str) -> IResult<&str, (), VerboseError<&str>> {
     value((), preceded(multispace0, char(';')))(input)
 }
 
-fn body(input: &str) -> IResult<&str, ElementBody> {
+fn body(input: &str) -> IResult<&str, ElementBody, VerboseError<&str>> {
     alt((
         value(ElementBody::Void, void),
         map(block, ElementBody::Block),
     ))(input)
 }
 
-fn non_empty_attribute(input: &str) -> IResult<&str, Attribute> {
+fn non_empty_attribute(input: &str) -> IResult<&str, Attribute, VerboseError<&str>> {
     map(separated_pair(tag_name, char('='), string), |a| Attribute {
         name: a.0.to_string(),
         value: AttributeValue::String(a.1),
     })(input)
 }
 
-fn empty_attribute(input: &str) -> IResult<&str, Attribute> {
+fn empty_attribute(input: &str) -> IResult<&str, Attribute, VerboseError<&str>> {
     map(tag_name, |a| Attribute {
         name: a.to_string(),
         value: AttributeValue::Empty,
     })(input)
 }
 
-fn attrs(input: &str) -> IResult<&str, Vec<Attribute>> {
+fn attrs(input: &str) -> IResult<&str, Vec<Attribute>, VerboseError<&str>> {
     separated_list0(multispace1, alt((non_empty_attribute, empty_attribute)))(input)
 }
 
-fn tag_name(input: &str) -> IResult<&str, &str> {
+fn tag_name(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     recognize(pair(
         alpha1,
         many0(alt((alphanumeric1, tag("_"), tag("-")))),
     ))(input)
 }
 
-fn element(input: &str) -> IResult<&str, Element> {
+fn element(input: &str) -> IResult<&str, Element, VerboseError<&str>> {
     map(
         tuple((
             tag_name,
@@ -128,7 +132,7 @@ fn element(input: &str) -> IResult<&str, Element> {
     )(input)
 }
 
-fn markup(input: &str) -> IResult<&str, Markup> {
+fn markup(input: &str) -> IResult<&str, Markup, VerboseError<&str>> {
     map(
         many0(preceded(
             multispace0,
@@ -142,15 +146,34 @@ fn markup(input: &str) -> IResult<&str, Markup> {
     )(input)
 }
 
-pub fn parse(src: &str) -> Markup {
-    // TODO: Error handling
-    let (remaining, result) = markup(src).unwrap();
+pub fn parse(src: &str, full_file: &str) -> Markup {
+    match markup(src) {
+        Ok((_, markup)) => markup,
+        Err(e) => {
+            let e = match e {
+                nom::Err::Error(e) | nom::Err::Failure(e) => e,
+                nom::Err::Incomplete(_) => {
+                    eprintln!("Incomplete input");
+                    exit(1);
+                }
+            };
 
-    if !remaining.is_empty() {
-        panic!("Unhandled syntax");
+            let context = e.errors.first().unwrap();
+            let offset = full_file.find(context.0).unwrap_or_default();
+
+            let text = "Unknown token";
+
+            let report = miette!(
+                severity = Severity::Error,
+                labels = vec![LabeledSpan::at_offset(offset, text)],
+                "Parsing error"
+            )
+            .with_source_code(full_file.to_string());
+
+            eprintln!("{:?}", report);
+            exit(1)
+        }
     }
-
-    result
 }
 
 #[cfg(test)]

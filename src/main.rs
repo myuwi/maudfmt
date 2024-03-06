@@ -53,9 +53,9 @@ fn format_code(input: &str, location: Vec<MacroLocation>) -> String {
 
         let indentation = whitespace / TAB_SIZE;
 
-        let content = &out[location.byte_range.clone()];
+        let content = out[location.byte_range.clone()].trim();
 
-        let markup = parse(content.trim());
+        let markup = parse(content, input);
         let formatted = format(markup, indentation);
 
         out.replace_range(location.byte_range.clone(), &format!(" {}", &formatted));
