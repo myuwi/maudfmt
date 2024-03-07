@@ -1,16 +1,18 @@
-use std::process::exit;
+use std::ops::Range;
 
-use miette::{miette, LabeledSpan, Severity};
+use miette::SourceSpan;
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
     character::complete::{alpha1, alphanumeric1, char, multispace0, multispace1, none_of, one_of},
-    combinator::{cut, map, recognize, value},
+    combinator::{all_consuming, cut, fail, map, recognize, value},
     error::VerboseError,
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
-    IResult,
+    Finish, IResult,
 };
+
+use crate::error::ParseError;
 
 // TODO: Raw strings
 // TODO: Classes and IDs: .foo #bar
@@ -19,10 +21,12 @@ use nom::{
 // TODO: Toggles
 // TODO: Control structures
 
+// TODO: Improve context for error reporting
+
 #[derive(Clone, Debug)]
 pub struct Block {
     pub newline: bool,
-    pub markup: Markup,
+    pub nodes: Vec<Node>,
 }
 
 #[derive(Clone, Debug)]
@@ -58,7 +62,9 @@ pub enum Node {
 }
 
 #[derive(Clone, Debug)]
-pub struct Markup(pub Vec<Node>);
+pub struct Markup {
+    pub nodes: Vec<Node>,
+}
 
 fn string(input: &str) -> IResult<&str, String, VerboseError<&str>> {
     map(
@@ -73,9 +79,9 @@ fn string(input: &str) -> IResult<&str, String, VerboseError<&str>> {
 fn block(input: &str) -> IResult<&str, Block, VerboseError<&str>> {
     delimited(
         preceded(multispace0, char('{')),
-        map(tuple((multispace0, markup)), |(whitespace, markup)| Block {
+        map(tuple((multispace0, nodes)), |(whitespace, markup)| Block {
             newline: whitespace.contains('\n'),
-            markup,
+            nodes: markup,
         }),
         preceded(multispace0, cut(char('}'))),
     )(input)
@@ -89,6 +95,7 @@ fn body(input: &str) -> IResult<&str, ElementBody, VerboseError<&str>> {
     alt((
         value(ElementBody::Void, void),
         map(block, ElementBody::Block),
+        cut(fail),
     ))(input)
 }
 
@@ -132,48 +139,35 @@ fn element(input: &str) -> IResult<&str, Element, VerboseError<&str>> {
     )(input)
 }
 
-fn markup(input: &str) -> IResult<&str, Markup, VerboseError<&str>> {
-    map(
-        many0(preceded(
-            multispace0,
-            alt((
-                map(element, Node::Element),
-                map(string, Node::Str),
-                map(block, Node::Block),
-            )),
+fn nodes(input: &str) -> IResult<&str, Vec<Node>, VerboseError<&str>> {
+    many0(preceded(
+        multispace0,
+        alt((
+            map(element, Node::Element),
+            map(string, Node::Str),
+            map(block, Node::Block),
         )),
-        Markup,
-    )(input)
+    ))(input)
 }
 
-pub fn parse(src: &str, full_file: &str) -> Markup {
-    match markup(src) {
-        Ok((_, markup)) => markup,
-        Err(e) => {
-            let e = match e {
-                nom::Err::Error(e) | nom::Err::Failure(e) => e,
-                nom::Err::Incomplete(_) => {
-                    eprintln!("Incomplete input");
-                    exit(1);
-                }
-            };
+fn markup(input: &str) -> Result<Markup, VerboseError<&str>> {
+    all_consuming(map(nodes, |n| Markup { nodes: n }))(input)
+        .finish()
+        .map(|(_, markup)| markup)
+}
 
-            let context = e.errors.first().unwrap();
-            let offset = full_file.find(context.0).unwrap_or_default();
+pub fn parse_range(src: &str, range: Range<usize>) -> Result<Markup, ParseError> {
+    let content = src[range].trim();
 
-            let text = "Unknown token";
+    markup(content).map_err(|e| {
+        let (remaining_input, _) = e.errors.first().unwrap();
+        let offset = src.find(remaining_input).unwrap_or_default();
 
-            let report = miette!(
-                severity = Severity::Error,
-                labels = vec![LabeledSpan::at_offset(offset, text)],
-                "Parsing error"
-            )
-            .with_source_code(full_file.to_string());
-
-            eprintln!("{:?}", report);
-            exit(1)
+        ParseError::UnexpectedToken {
+            src: src.to_string(),
+            err_span: SourceSpan::from((offset, 0)),
         }
-    }
+    })
 }
 
 #[cfg(test)]
@@ -218,7 +212,7 @@ mod tests {
     #[test]
     fn test_parse_block() {
         assert_eq!(
-            format!("{:?}", markup(r#"{ input; }"#)),
+            format!("{:?}", nodes(r#"{ input; }"#)),
             r#"Ok(("", Markup([Block(Block { newline: false, markup: Markup([Element(Element { name: "input", attrs: [], body: Void })]) })])))"#
         );
 
@@ -238,7 +232,7 @@ mod tests {
     #[test]
     fn test_parse_multiroot() {
         assert_eq!(
-            format!("{:?}", markup(r#""a" "b""#)),
+            format!("{:?}", nodes(r#""a" "b""#)),
             r#"Ok(("", Markup([Str("a"), Str("b")])))"#
         );
     }

@@ -3,12 +3,14 @@ use std::{
     ops::Range,
 };
 
+use miette::{miette, Report};
 use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
+mod error;
 mod formatter;
 mod parser;
 
-use crate::{formatter::format, parser::parse};
+use crate::{formatter::format, parser::parse_range};
 
 const TAB_SIZE: usize = 4;
 
@@ -38,7 +40,7 @@ impl<'ast> Visit<'ast> for MacroVisitor {
     }
 }
 
-fn format_code(input: &str, location: Vec<MacroLocation>) -> String {
+fn format_code(input: &str, location: Vec<MacroLocation>) -> Result<String, Report> {
     let mut out = input.to_string();
 
     for location in location.iter().rev() {
@@ -51,35 +53,35 @@ fn format_code(input: &str, location: Vec<MacroLocation>) -> String {
             .map(|ch| ch.len_utf8())
             .sum();
 
-        let indentation = whitespace / TAB_SIZE;
+        let indent_level = whitespace / TAB_SIZE;
 
-        let content = out[location.byte_range.clone()].trim();
+        let markup = parse_range(input, location.byte_range.clone())?;
 
-        let markup = parse(content, input);
-        let formatted = format(markup, indentation);
+        let formatted = format(markup, indent_level);
 
         out.replace_range(location.byte_range.clone(), &format!(" {}", &formatted));
     }
 
-    out
+    Ok(out)
 }
 
-fn main() {
+fn main() -> Result<(), Report> {
     let mut code = String::new();
 
-    match io::stdin().read_to_string(&mut code) {
-        Ok(_) => {
-            let ast = parse_file(&code).unwrap();
+    io::stdin()
+        .read_to_string(&mut code)
+        .map_err(|e| miette!("Error reading input: {}", e))?;
 
-            let mut visitor = MacroVisitor {
-                locations: Vec::new(),
-            };
+    let ast = parse_file(&code).unwrap();
 
-            visitor.visit_file(&ast);
+    let mut visitor = MacroVisitor {
+        locations: Vec::new(),
+    };
 
-            let formatted_code = format_code(&code, visitor.locations);
-            print!("{}", formatted_code);
-        }
-        Err(err) => eprintln!("Error reading input: {}", err),
-    }
+    visitor.visit_file(&ast);
+
+    let code = format_code(&code, visitor.locations)?;
+    print!("{}", code);
+
+    Ok(())
 }

@@ -5,7 +5,7 @@ fn format_block(out: &mut String, block: &Block, depth: usize, inline: bool) {
 
     out.push('{');
 
-    format_markup(out, &block.markup, depth + 1, inline);
+    format_nodes(out, &block.nodes, depth + 1, inline);
 
     if !inline {
         out.push_str(&" ".repeat(depth * 4));
@@ -36,9 +36,7 @@ fn format_element(out: &mut String, element: &Element, depth: usize, inline: boo
     }
 }
 
-fn format_markup(out: &mut String, markup: &Markup, depth: usize, inline: bool) {
-    let Markup(nodes) = markup;
-
+fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool) {
     for node in nodes {
         if !out.is_empty() {
             if inline {
@@ -66,7 +64,7 @@ fn format_markup(out: &mut String, markup: &Markup, depth: usize, inline: bool) 
 pub fn format(markup: Markup, depth: usize) -> String {
     let mut out = String::new();
 
-    format_markup(&mut out, &markup, depth, false);
+    format_nodes(&mut out, &markup.nodes, depth, false);
 
     out[..out.len() - 1].to_string()
 }
