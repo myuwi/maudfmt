@@ -1,5 +1,9 @@
 use crate::parser::{AttributeValue, Block, Element, ElementBody, Markup, Node};
 
+fn format_string(out: &mut String, string: &str) {
+    out.push_str(&format!("\"{}\"", string));
+}
+
 fn format_block(out: &mut String, block: &Block, depth: usize, inline: bool) {
     let inline = !block.newline || inline;
 
@@ -25,7 +29,7 @@ fn format_element(out: &mut String, element: &Element, depth: usize, inline: boo
 
         if let AttributeValue::String(s) = &attr.value {
             out.push('=');
-            out.push_str(&format!(r#""{}""#, s));
+            format_string(out, s)
         }
     }
 
@@ -50,7 +54,7 @@ fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool)
         }
 
         match &node {
-            Node::Str(s) => out.push_str(&format!(r#""{}""#, s)),
+            Node::Str(s) => format_string(out, s),
             Node::Element(e) => format_element(out, e, depth, inline),
             Node::Block(b) => format_block(out, b, depth, inline),
         }
