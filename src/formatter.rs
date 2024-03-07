@@ -5,10 +5,12 @@ fn format_block(out: &mut String, block: &Block, depth: usize, inline: bool) {
 
     out.push('{');
 
-    format_nodes(out, &block.nodes, depth + 1, inline);
+    if !block.nodes.is_empty() {
+        format_nodes(out, &block.nodes, depth + 1, inline);
 
-    if !inline {
-        out.push_str(&" ".repeat(depth * 4));
+        if !inline {
+            out.push_str(&" ".repeat(depth * 4));
+        }
     }
 
     out.push('}');
