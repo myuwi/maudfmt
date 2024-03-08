@@ -1,4 +1,28 @@
-use crate::parser::{AttributeValue, Block, Element, ElementBody, Markup, Node, Splice};
+use crate::parser::{
+    AttributeValue, Block, ControlStructure, Element, ElementBody, Else, If, Markup, Node, Splice,
+};
+
+fn format_else(out: &mut String, else_: &Else, depth: usize, inline: bool) {
+    out.push_str("@else ");
+
+    match else_ {
+        Else::If(if_) => format_if(out, if_, depth, inline),
+        Else::Then(block) => format_block(out, block, depth, inline),
+    }
+}
+
+fn format_if(out: &mut String, if_: &If, depth: usize, inline: bool) {
+    out.push_str("if ");
+    out.push_str(if_.cond);
+    out.push(' ');
+
+    format_block(out, &if_.body, depth, inline);
+
+    if let Some(ref else_) = if_.else_clause {
+        out.push(' ');
+        format_else(out, else_, depth, inline)
+    }
+}
 
 fn format_string(out: &mut String, string: &str) {
     out.push_str(&format!("\"{}\"", string));
@@ -61,6 +85,12 @@ fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool)
             Node::Block(b) => format_block(out, b, depth, inline),
             Node::StrLit(s) => format_string(out, s),
             Node::Splice(s) => format_splice(out, s),
+            Node::ControlStructure(s) => match s {
+                ControlStructure::IfElse(i) => {
+                    out.push('@');
+                    format_if(out, i, depth, inline);
+                }
+            },
         }
     }
 

@@ -14,9 +14,30 @@ use nom::{
     Finish, InputTake,
 };
 
-use crate::error::ParseError;
+use crate::{
+    error::ParseError,
+    util::{ws0, ws1},
+};
 
 type NomResult<'a, O> = Result<(&'a str, O), nom::Err<VerboseError<&'a str>>>;
+
+#[derive(Clone, Debug)]
+pub enum Else<'a> {
+    If(If<'a>),
+    Then(Block<'a>),
+}
+
+#[derive(Clone, Debug)]
+pub struct If<'a> {
+    pub cond: &'a str,
+    pub body: Block<'a>,
+    pub else_clause: Option<Box<Else<'a>>>,
+}
+
+#[derive(Clone, Debug)]
+pub enum ControlStructure<'a> {
+    IfElse(If<'a>),
+}
 
 #[derive(Clone, Debug)]
 pub struct Splice<'a> {
@@ -60,6 +81,7 @@ pub enum Node<'a> {
     Block(Block<'a>),
     StrLit(&'a str),
     Splice(Splice<'a>),
+    ControlStructure(ControlStructure<'a>),
 }
 
 #[derive(Clone, Debug)]
@@ -67,16 +89,16 @@ pub struct Markup<'a> {
     pub nodes: Vec<Node<'a>>,
 }
 
-fn splice_inner(input: &str) -> NomResult<&str> {
-    let mut paren_count = 0;
+fn expr(input: &str) -> NomResult<&str> {
+    use nom::error::ParseError;
+    let mut stack: Vec<char> = vec![];
 
     let mut it = input.chars().enumerate();
-    while let Some((i, char)) = it.next() {
-        match char {
-            '(' => paren_count += 1,
-            ')' => paren_count -= 1,
+    while let Some((i, c)) = it.next() {
+        match c {
+            // Handle strings inside expressions
             '"' | '\'' => {
-                let parser = if char == '"' { str_lit } else { char_lit };
+                let parser = if c == '"' { str_lit } else { char_lit };
 
                 let (_, str) = parser(&input[i..])?;
                 let char_count = str.chars().count();
@@ -84,24 +106,82 @@ fn splice_inner(input: &str) -> NomResult<&str> {
                 it.nth(char_count);
                 continue;
             }
-            _ => (),
-        }
 
-        if paren_count == -1 {
-            return Ok(input.take_split(i));
+            '(' | '[' => stack.push(c),
+            '{' => {
+                if stack.is_empty() {
+                    let (i, o) = input.take_split(i);
+                    return Ok((i, o.trim()));
+                }
+                stack.push(c)
+            }
+            '|' => {
+                if let Some('|') = stack.last() {
+                    stack.pop();
+                } else {
+                    stack.push(c);
+                }
+            }
+            ')' | '}' | ']' => {
+                if let Some(popped) = stack.pop() {
+                    match popped {
+                        '(' if c == ')' => (),
+                        '{' if c == '}' => (),
+                        '[' if c == ']' => (),
+                        // Return error if braces are invalid
+                        _ => {
+                            let (ctx, _) = input.take_split(i);
+                            return Err(nom::Err::Error(VerboseError::from_char(ctx, c)));
+                        }
+                    }
+                } else {
+                    let (i, o) = input.take_split(i);
+                    return Ok((i, o.trim()));
+                }
+            }
+            _ => (),
         }
     }
 
-    use nom::error::ParseError;
     Err(nom::Err::Error(VerboseError::from_error_kind(
         input,
         ErrorKind::TakeUntil,
     )))
 }
 
+fn else_expr(input: &str) -> NomResult<Else> {
+    preceded(
+        tag("else"),
+        ws1(alt((map(if_expr, Else::If), map(block, Else::Then)))),
+    )(input)
+}
+
+fn if_expr(input: &str) -> NomResult<If> {
+    let opt_else = opt(preceded(char('@'), map(else_expr, Box::new)));
+
+    preceded(
+        tag("if"),
+        ws1(map(
+            tuple((expr, ws0(block), ws0(opt_else))),
+            |(cond, body, else_clause)| If {
+                cond,
+                body,
+                else_clause,
+            },
+        )),
+    )(input)
+}
+
+fn control_structure(input: &str) -> NomResult<ControlStructure> {
+    preceded(
+        char('@'),
+        alt((map(if_expr, ControlStructure::IfElse), cut(fail))),
+    )(input)
+}
+
 fn splice(input: &str) -> NomResult<Splice> {
-    map(delimited(char('('), splice_inner, char(')')), |s| Splice {
-        expr: s.trim(),
+    map(delimited(char('('), expr, char(')')), |expr| Splice {
+        expr,
     })(input)
 }
 
@@ -129,17 +209,17 @@ fn str_lit(input: &str) -> NomResult<&str> {
 
 fn block(input: &str) -> NomResult<Block> {
     delimited(
-        preceded(multispace0, char('{')),
+        ws0(char('{')),
         map(tuple((multispace0, nodes)), |(whitespace, nodes)| Block {
             newline: whitespace.contains('\n'),
             nodes,
         }),
-        preceded(multispace0, cut(char('}'))),
+        ws0(cut(char('}'))),
     )(input)
 }
 
 fn void(input: &str) -> NomResult<()> {
-    value((), preceded(multispace0, char(';')))(input)
+    value((), ws0(char(';')))(input)
 }
 
 fn body(input: &str) -> NomResult<ElementBody> {
@@ -179,11 +259,7 @@ fn tag_name(input: &str) -> NomResult<&str> {
 
 fn element(input: &str) -> NomResult<Element> {
     map(
-        tuple((
-            tag_name,
-            preceded(multispace0, attrs),
-            preceded(multispace0, body),
-        )),
+        tuple((tag_name, ws0(attrs), ws0(body))),
         |(name, attrs, body)| Element { name, attrs, body },
     )(input)
 }
@@ -196,6 +272,7 @@ fn nodes(input: &str) -> NomResult<Vec<Node>> {
             map(str_lit, Node::StrLit),
             map(block, Node::Block),
             map(splice, Node::Splice),
+            map(control_structure, Node::ControlStructure),
         )),
     ))(input)
 }
