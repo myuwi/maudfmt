@@ -1,15 +1,18 @@
-use crate::parser::{AttributeValue, Block, Element, ElementBody, Markup, Node};
+use crate::parser::{AttributeValue, Block, Element, ElementBody, Markup, Node, Splice};
 
 fn format_string(out: &mut String, string: &str) {
     out.push_str(&format!("\"{}\"", string));
 }
 
-fn format_block(out: &mut String, block: &Block, depth: usize, inline: bool) {
-    let inline = !block.newline || inline;
+fn format_splice(out: &mut String, splice: &Splice) {
+    out.push_str(&format!("({})", splice.expr));
+}
 
+fn format_block(out: &mut String, block: &Block, depth: usize, inline: bool) {
     out.push('{');
 
     if !block.nodes.is_empty() {
+        let inline = !block.newline || inline;
         format_nodes(out, &block.nodes, depth + 1, inline);
 
         if !inline {
@@ -57,6 +60,7 @@ fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool)
             Node::Str(s) => format_string(out, s),
             Node::Element(e) => format_element(out, e, depth, inline),
             Node::Block(b) => format_block(out, b, depth, inline),
+            Node::Splice(s) => format_splice(out, s),
         }
     }
 

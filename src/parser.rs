@@ -4,24 +4,22 @@ use miette::SourceSpan;
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
-    character::complete::{alpha1, alphanumeric1, char, multispace0, multispace1, none_of, one_of},
+    character::complete::{
+        alpha1, alphanumeric1, anychar, char, multispace0, multispace1, none_of,
+    },
     combinator::{all_consuming, cut, fail, map, recognize, value},
-    error::VerboseError,
+    error::{ErrorKind, VerboseError},
     multi::{many0, separated_list0},
-    sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
-    Finish, IResult,
+    sequence::{delimited, pair, preceded, separated_pair, tuple},
+    Finish, IResult, InputTake,
 };
 
 use crate::error::ParseError;
 
-// TODO: Raw strings
-// TODO: Classes and IDs: .foo #bar
-// TODO: Implicit div elements
-// TODO: Splices
-// TODO: Toggles
-// TODO: Control structures
-
-// TODO: Improve context for error reporting
+#[derive(Clone, Debug)]
+pub struct Splice {
+    pub expr: String,
+}
 
 #[derive(Clone, Debug)]
 pub struct Block {
@@ -59,6 +57,7 @@ pub enum Node {
     Element(Element),
     Block(Block),
     Str(String),
+    Splice(Splice),
 }
 
 #[derive(Clone, Debug)]
@@ -66,11 +65,61 @@ pub struct Markup {
     pub nodes: Vec<Node>,
 }
 
+fn splice_inner(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+    let mut paren_count = 0;
+
+    let mut it = input.chars().enumerate();
+    while let Some((i, char)) = it.next() {
+        match char {
+            '(' => paren_count += 1,
+            ')' => paren_count -= 1,
+            '"' | '\'' => {
+                let parser = if char == '"' { string } else { character };
+
+                let (_, str) = parser(&input[i..])?;
+                let char_count = str.chars().count();
+
+                it.nth(char_count);
+                continue;
+            }
+            _ => (),
+        }
+
+        if paren_count == -1 {
+            return Ok(input.take_split(i));
+        }
+    }
+
+    use nom::error::ParseError;
+    Err(nom::Err::Error(VerboseError::from_error_kind(
+        input,
+        ErrorKind::TakeUntil,
+    )))
+}
+
+fn splice(input: &str) -> IResult<&str, Splice, VerboseError<&str>> {
+    map(delimited(char('('), splice_inner, char(')')), |s| Splice {
+        expr: s.trim().to_string(),
+    })(input)
+}
+
+fn character(input: &str) -> IResult<&str, String, VerboseError<&str>> {
+    map(
+        delimited(
+            char('\''),
+            escaped(none_of("\\'"), '\\', anychar),
+            char('\''),
+        ),
+        String::from,
+    )(input)
+}
+
 fn string(input: &str) -> IResult<&str, String, VerboseError<&str>> {
     map(
-        preceded(
+        delimited(
             char('"'),
-            terminated(escaped(none_of(r#"\""#), '\\', one_of(r#""n\"#)), char('"')),
+            escaped(none_of("\\\""), '\\', anychar),
+            char('"'),
         ),
         String::from,
     )(input)
@@ -79,9 +128,9 @@ fn string(input: &str) -> IResult<&str, String, VerboseError<&str>> {
 fn block(input: &str) -> IResult<&str, Block, VerboseError<&str>> {
     delimited(
         preceded(multispace0, char('{')),
-        map(tuple((multispace0, nodes)), |(whitespace, markup)| Block {
+        map(tuple((multispace0, nodes)), |(whitespace, nodes)| Block {
             newline: whitespace.contains('\n'),
-            nodes: markup,
+            nodes,
         }),
         preceded(multispace0, cut(char('}'))),
     )(input)
@@ -146,6 +195,7 @@ fn nodes(input: &str) -> IResult<&str, Vec<Node>, VerboseError<&str>> {
             map(element, Node::Element),
             map(string, Node::Str),
             map(block, Node::Block),
+            map(splice, Node::Splice),
         )),
     ))(input)
 }
