@@ -11,61 +11,63 @@ use nom::{
     error::{ErrorKind, VerboseError},
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, separated_pair, tuple},
-    Finish, IResult, InputTake,
+    Finish, InputTake,
 };
 
 use crate::error::ParseError;
 
+type NomResult<'a, O> = Result<(&'a str, O), nom::Err<VerboseError<&'a str>>>;
+
 #[derive(Clone, Debug)]
-pub struct Splice {
-    pub expr: String,
+pub struct Splice<'a> {
+    pub expr: &'a str,
 }
 
 #[derive(Clone, Debug)]
-pub struct Block {
+pub struct Block<'a> {
     pub newline: bool,
-    pub nodes: Vec<Node>,
+    pub nodes: Vec<Node<'a>>,
 }
 
 #[derive(Clone, Debug)]
-pub enum ElementBody {
+pub enum ElementBody<'a> {
     Void,
-    Block(Block),
+    Block(Block<'a>),
 }
 
 #[derive(Clone, Debug)]
-pub enum AttributeValue {
-    String(String),
+pub enum AttributeValue<'a> {
+    String(&'a str),
     Empty,
 }
 
 #[derive(Clone, Debug)]
-pub struct Attribute {
-    pub name: String,
-    pub value: AttributeValue,
+pub struct Attribute<'a> {
+    pub name: &'a str,
+    pub value: AttributeValue<'a>,
 }
 
 #[derive(Clone, Debug)]
-pub struct Element {
-    pub name: String,
-    pub attrs: Vec<Attribute>,
-    pub body: ElementBody,
+pub struct Element<'a> {
+    pub name: &'a str,
+    pub attrs: Vec<Attribute<'a>>,
+    pub body: ElementBody<'a>,
 }
 
 #[derive(Clone, Debug)]
-pub enum Node {
-    Element(Element),
-    Block(Block),
-    Str(String),
-    Splice(Splice),
+pub enum Node<'a> {
+    Element(Element<'a>),
+    Block(Block<'a>),
+    StrLit(&'a str),
+    Splice(Splice<'a>),
 }
 
 #[derive(Clone, Debug)]
-pub struct Markup {
-    pub nodes: Vec<Node>,
+pub struct Markup<'a> {
+    pub nodes: Vec<Node<'a>>,
 }
 
-fn splice_inner(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+fn splice_inner(input: &str) -> NomResult<&str> {
     let mut paren_count = 0;
 
     let mut it = input.chars().enumerate();
@@ -74,7 +76,7 @@ fn splice_inner(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
             '(' => paren_count += 1,
             ')' => paren_count -= 1,
             '"' | '\'' => {
-                let parser = if char == '"' { string } else { character };
+                let parser = if char == '"' { str_lit } else { char_lit };
 
                 let (_, str) = parser(&input[i..])?;
                 let char_count = str.chars().count();
@@ -97,35 +99,35 @@ fn splice_inner(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
     )))
 }
 
-fn splice(input: &str) -> IResult<&str, Splice, VerboseError<&str>> {
+fn splice(input: &str) -> NomResult<Splice> {
     map(delimited(char('('), splice_inner, char(')')), |s| Splice {
-        expr: s.trim().to_string(),
+        expr: s.trim(),
     })(input)
 }
 
-fn character(input: &str) -> IResult<&str, String, VerboseError<&str>> {
+fn char_lit(input: &str) -> NomResult<&str> {
     map(
         delimited(
             char('\''),
             opt(escaped(none_of("\\'"), '\\', anychar)),
             char('\''),
         ),
-        |s| String::from(s.unwrap_or_default()),
+        |s| s.unwrap_or_default(),
     )(input)
 }
 
-fn string(input: &str) -> IResult<&str, String, VerboseError<&str>> {
+fn str_lit(input: &str) -> NomResult<&str> {
     map(
         delimited(
             char('"'),
             opt(escaped(none_of("\\\""), '\\', anychar)),
             char('"'),
         ),
-        |s| String::from(s.unwrap_or_default()),
+        |s| s.unwrap_or_default(),
     )(input)
 }
 
-fn block(input: &str) -> IResult<&str, Block, VerboseError<&str>> {
+fn block(input: &str) -> NomResult<Block> {
     delimited(
         preceded(multispace0, char('{')),
         map(tuple((multispace0, nodes)), |(whitespace, nodes)| Block {
@@ -136,11 +138,11 @@ fn block(input: &str) -> IResult<&str, Block, VerboseError<&str>> {
     )(input)
 }
 
-fn void(input: &str) -> IResult<&str, (), VerboseError<&str>> {
+fn void(input: &str) -> NomResult<()> {
     value((), preceded(multispace0, char(';')))(input)
 }
 
-fn body(input: &str) -> IResult<&str, ElementBody, VerboseError<&str>> {
+fn body(input: &str) -> NomResult<ElementBody> {
     alt((
         value(ElementBody::Void, void),
         map(block, ElementBody::Block),
@@ -148,52 +150,50 @@ fn body(input: &str) -> IResult<&str, ElementBody, VerboseError<&str>> {
     ))(input)
 }
 
-fn non_empty_attribute(input: &str) -> IResult<&str, Attribute, VerboseError<&str>> {
-    map(separated_pair(tag_name, char('='), string), |a| Attribute {
-        name: a.0.to_string(),
-        value: AttributeValue::String(a.1),
+fn non_empty_attribute(input: &str) -> NomResult<Attribute> {
+    map(separated_pair(tag_name, char('='), str_lit), |a| {
+        Attribute {
+            name: a.0,
+            value: AttributeValue::String(a.1),
+        }
     })(input)
 }
 
-fn empty_attribute(input: &str) -> IResult<&str, Attribute, VerboseError<&str>> {
+fn empty_attribute(input: &str) -> NomResult<Attribute> {
     map(tag_name, |a| Attribute {
-        name: a.to_string(),
+        name: a,
         value: AttributeValue::Empty,
     })(input)
 }
 
-fn attrs(input: &str) -> IResult<&str, Vec<Attribute>, VerboseError<&str>> {
+fn attrs(input: &str) -> NomResult<Vec<Attribute>> {
     separated_list0(multispace1, alt((non_empty_attribute, empty_attribute)))(input)
 }
 
-fn tag_name(input: &str) -> IResult<&str, &str, VerboseError<&str>> {
+fn tag_name(input: &str) -> NomResult<&str> {
     recognize(pair(
         alpha1,
         many0(alt((alphanumeric1, tag("_"), tag("-")))),
     ))(input)
 }
 
-fn element(input: &str) -> IResult<&str, Element, VerboseError<&str>> {
+fn element(input: &str) -> NomResult<Element> {
     map(
         tuple((
             tag_name,
             preceded(multispace0, attrs),
             preceded(multispace0, body),
         )),
-        |(name, attrs, body)| Element {
-            name: name.to_string(),
-            attrs,
-            body,
-        },
+        |(name, attrs, body)| Element { name, attrs, body },
     )(input)
 }
 
-fn nodes(input: &str) -> IResult<&str, Vec<Node>, VerboseError<&str>> {
+fn nodes(input: &str) -> NomResult<Vec<Node>> {
     many0(preceded(
         multispace0,
         alt((
             map(element, Node::Element),
-            map(string, Node::Str),
+            map(str_lit, Node::StrLit),
             map(block, Node::Block),
             map(splice, Node::Splice),
         )),

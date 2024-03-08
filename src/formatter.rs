@@ -24,11 +24,11 @@ fn format_block(out: &mut String, block: &Block, depth: usize, inline: bool) {
 }
 
 fn format_element(out: &mut String, element: &Element, depth: usize, inline: bool) {
-    out.push_str(&element.name);
+    out.push_str(element.name);
 
     for attr in &element.attrs {
         out.push(' ');
-        out.push_str(&attr.name);
+        out.push_str(attr.name);
 
         if let AttributeValue::String(s) = &attr.value {
             out.push('=');
@@ -57,9 +57,9 @@ fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool)
         }
 
         match &node {
-            Node::Str(s) => format_string(out, s),
             Node::Element(e) => format_element(out, e, depth, inline),
             Node::Block(b) => format_block(out, b, depth, inline),
+            Node::StrLit(s) => format_string(out, s),
             Node::Splice(s) => format_splice(out, s),
         }
     }
