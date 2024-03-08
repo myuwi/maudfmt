@@ -7,7 +7,7 @@ use nom::{
     character::complete::{
         alpha1, alphanumeric1, anychar, char, multispace0, multispace1, none_of,
     },
-    combinator::{all_consuming, cut, fail, map, recognize, value},
+    combinator::{all_consuming, cut, fail, map, opt, recognize, value},
     error::{ErrorKind, VerboseError},
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, separated_pair, tuple},
@@ -107,10 +107,10 @@ fn character(input: &str) -> IResult<&str, String, VerboseError<&str>> {
     map(
         delimited(
             char('\''),
-            escaped(none_of("\\'"), '\\', anychar),
+            opt(escaped(none_of("\\'"), '\\', anychar)),
             char('\''),
         ),
-        String::from,
+        |s| String::from(s.unwrap_or_default()),
     )(input)
 }
 
@@ -118,10 +118,10 @@ fn string(input: &str) -> IResult<&str, String, VerboseError<&str>> {
     map(
         delimited(
             char('"'),
-            escaped(none_of("\\\""), '\\', anychar),
+            opt(escaped(none_of("\\\""), '\\', anychar)),
             char('"'),
         ),
-        String::from,
+        |s| String::from(s.unwrap_or_default()),
     )(input)
 }
 
