@@ -9,7 +9,6 @@ use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 mod error;
 mod formatter;
 mod parser;
-mod util;
 
 use crate::{formatter::format, parser::parse_range};
 

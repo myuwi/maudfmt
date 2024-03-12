@@ -1,6 +1,17 @@
 use crate::parser::{
-    AttributeValue, Block, ControlStructure, Element, ElementBody, Else, If, Markup, Node, Splice,
+    AttributeValue, Block, ControlStructure, Element, ElementBody, Else, For, If, Markup, Node,
+    Splice,
 };
+
+fn format_for(out: &mut String, for_: &For, depth: usize, inline: bool) {
+    out.push_str("for ");
+    out.push_str(for_.pattern);
+    out.push_str(" in ");
+    out.push_str(for_.expr);
+    out.push(' ');
+
+    format_block(out, &for_.body, depth, inline);
+}
 
 fn format_else(out: &mut String, else_: &Else, depth: usize, inline: bool) {
     out.push_str("@else ");
@@ -85,12 +96,13 @@ fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool)
             Node::Block(b) => format_block(out, b, depth, inline),
             Node::StrLit(s) => format_string(out, s),
             Node::Splice(s) => format_splice(out, s),
-            Node::ControlStructure(s) => match s {
-                ControlStructure::IfElse(i) => {
-                    out.push('@');
-                    format_if(out, i, depth, inline);
+            Node::ControlStructure(s) => {
+                out.push('@');
+                match s {
+                    ControlStructure::If(i) => format_if(out, i, depth, inline),
+                    ControlStructure::For(f) => format_for(out, f, depth, inline),
                 }
-            },
+            }
         }
     }
 
