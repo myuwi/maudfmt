@@ -1,5 +1,9 @@
 use nom::{
-    error::{ErrorKind, VerboseError},
+    branch::alt,
+    character::complete::{char, none_of},
+    combinator::{cond, map_opt, recognize},
+    multi::many0_count,
+    sequence::delimited,
     InputTake,
 };
 
@@ -8,63 +12,29 @@ use super::{
     NomResult,
 };
 
-// TODO: rewrite with nom combinators
-pub fn expr(input: &str) -> NomResult<&str> {
-    use nom::error::ParseError;
-    let mut stack: Vec<char> = vec![];
-
-    let mut it = input.chars().enumerate();
-    while let Some((i, c)) = it.next() {
-        match c {
-            // Handle strings inside expressions
-            '"' | '\'' => {
-                let parser = if c == '"' { str_lit } else { char_lit };
-
-                let (_, str) = parser(&input[i..])?;
-                let char_count = str.chars().count();
-
-                it.nth(char_count);
-                continue;
-            }
-
-            '(' | '[' => stack.push(c),
-            '{' => {
-                if stack.is_empty() {
-                    let (i, o) = input.take_split(i);
-                    return Ok((i, o.trim()));
-                }
-                stack.push(c)
-            }
-            '|' => {
-                if let Some('|') = stack.last() {
-                    stack.pop();
-                } else {
-                    stack.push(c);
-                }
-            }
-            ')' | '}' | ']' => {
-                if let Some(popped) = stack.pop() {
-                    match popped {
-                        '(' if c == ')' => (),
-                        '{' if c == '}' => (),
-                        '[' if c == ']' => (),
-                        // Return error if braces are invalid
-                        _ => {
-                            let (ctx, _) = input.take_split(i);
-                            return Err(nom::Err::Error(VerboseError::from_char(ctx, c)));
-                        }
-                    }
-                } else {
-                    let (i, o) = input.take_split(i);
-                    return Ok((i, o.trim()));
-                }
-            }
-            _ => (),
-        }
+pub fn group<'a>(start_delim: char, end_delim: char) -> impl FnMut(&'a str) -> NomResult<&str> {
+    move |i| {
+        recognize(delimited(
+            char(start_delim),
+            expr_impl(true),
+            char(end_delim),
+        ))(i)
     }
+}
 
-    Err(nom::Err::Error(VerboseError::from_error_kind(
-        input,
-        ErrorKind::TakeUntil,
-    )))
+// TODO: handle comments
+fn expr_impl<'a>(eager_brace: bool) -> impl FnMut(&'a str) -> NomResult<&str> {
+    recognize(many0_count(alt((
+        str_lit,
+        char_lit,
+        recognize(none_of("(){}[]<>")),
+        group('(', ')'),
+        map_opt(cond(eager_brace, group('{', '}')), |o| o),
+        group('[', ']'),
+        group('<', '>'),
+    ))))
+}
+
+pub fn expr<'a>(eager_brace: bool) -> impl FnMut(&'a str) -> NomResult<&str> {
+    move |i| expr_impl(eager_brace)(i).map(|(_, o)| i.take_split(o.trim_end().len()))
 }

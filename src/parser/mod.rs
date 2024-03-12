@@ -108,14 +108,14 @@ pub struct Markup<'a> {
 fn for_expr(input: &str) -> NomResult<For> {
     preceded(
         keyword("for"),
-        ws(map(
-            tuple((pattern, ws(preceded(keyword("in"), ws(expr))), ws(block))),
-            |(pattern, expr, body)| For {
+        map(
+            tuple((ws(pattern), keyword("in"), ws(expr(false)), block)),
+            |(pattern, _, expr, body)| For {
                 pattern,
                 expr,
                 body,
             },
-        )),
+        ),
     )(input)
 }
 
@@ -131,14 +131,14 @@ fn if_expr(input: &str) -> NomResult<If> {
 
     preceded(
         keyword("if"),
-        ws(map(
-            tuple((expr, ws(block), ws(opt_else))),
+        map(
+            tuple((ws(expr(false)), block, ws(opt_else))),
             |(cond, body, else_clause)| If {
                 cond,
                 body,
                 else_clause,
             },
-        )),
+        ),
     )(input)
 }
 
@@ -154,24 +154,24 @@ fn control_structure(input: &str) -> NomResult<ControlStructure> {
 }
 
 fn splice(input: &str) -> NomResult<Splice> {
-    map(delimited(char('('), expr, char(')')), |expr| Splice {
-        expr,
+    map(delimited(char('('), ws(expr(true)), char(')')), |expr| {
+        Splice { expr }
     })(input)
 }
 
 fn block(input: &str) -> NomResult<Block> {
     delimited(
-        ws(char('{')),
-        map(tuple((multispace0, nodes)), |(whitespace, nodes)| Block {
+        char('{'),
+        map(pair(multispace0, ws(nodes)), |(whitespace, nodes)| Block {
             newline: whitespace.contains('\n'),
             nodes,
         }),
-        ws(cut(char('}'))),
+        cut(char('}')),
     )(input)
 }
 
 fn void(input: &str) -> NomResult<()> {
-    value((), ws(char(';')))(input)
+    value((), char(';'))(input)
 }
 
 fn body(input: &str) -> NomResult<ElementBody> {
@@ -210,10 +210,9 @@ fn tag_name(input: &str) -> NomResult<&str> {
 }
 
 fn element(input: &str) -> NomResult<Element> {
-    map(
-        tuple((tag_name, ws(attrs), ws(body))),
-        |(name, attrs, body)| Element { name, attrs, body },
-    )(input)
+    map(tuple((tag_name, ws(attrs), body)), |(name, attrs, body)| {
+        Element { name, attrs, body }
+    })(input)
 }
 
 fn nodes(input: &str) -> NomResult<Vec<Node>> {
