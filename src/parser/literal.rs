@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::{escaped, tag, take_while, take_while1},
     character::complete::{anychar, char, digit1, none_of, one_of},
     combinator::{map, opt, peek, recognize, verify},
-    sequence::{delimited, pair, terminated, tuple},
+    sequence::{delimited, pair, preceded, terminated, tuple},
     AsChar,
 };
 
@@ -24,6 +24,10 @@ pub fn char_lit(input: &str) -> NomResult<&str> {
     )(input)
 }
 
+pub fn byte_lit(input: &str) -> NomResult<&str> {
+    preceded(char('b'), char_lit)(input)
+}
+
 pub fn str_lit(input: &str) -> NomResult<&str> {
     map(
         delimited(
@@ -33,6 +37,10 @@ pub fn str_lit(input: &str) -> NomResult<&str> {
         ),
         |s| s.unwrap_or_default(),
     )(input)
+}
+
+pub fn byte_str_lit(input: &str) -> NomResult<&str> {
+    preceded(char('b'), str_lit)(input)
 }
 
 pub fn int_digits(radix: u32) -> impl FnMut(&str) -> NomResult<&str> {
