@@ -5,14 +5,14 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1, char, multispace0, multispace1},
-    combinator::{all_consuming, cut, fail, map, opt, recognize, value},
-    error::VerboseError,
+    combinator::{all_consuming, cut, map, opt, recognize, value},
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, separated_pair, tuple},
     Finish,
 };
 
 mod combinator;
+mod error;
 mod expr;
 mod ident;
 mod literal;
@@ -20,6 +20,7 @@ mod path;
 mod pattern;
 
 use combinator::ws;
+use error::ParserError;
 use expr::expr;
 use ident::keyword;
 use literal::str_lit;
@@ -27,7 +28,7 @@ use pattern::pattern;
 
 use crate::error::ParseError;
 
-pub type NomResult<'a, O> = Result<(&'a str, O), nom::Err<VerboseError<&'a str>>>;
+pub type NomResult<'a, O> = Result<(&'a str, O), nom::Err<ParserError<&'a str>>>;
 
 #[derive(Clone, Debug)]
 pub struct For<'a> {
@@ -145,11 +146,10 @@ fn if_expr(input: &str) -> NomResult<If> {
 fn control_structure(input: &str) -> NomResult<ControlStructure> {
     preceded(
         char('@'),
-        alt((
+        cut(alt((
             map(if_expr, ControlStructure::If),
             map(for_expr, ControlStructure::For),
-            cut(fail),
-        )),
+        ))),
     )(input)
 }
 
@@ -175,11 +175,10 @@ fn void(input: &str) -> NomResult<()> {
 }
 
 fn body(input: &str) -> NomResult<ElementBody> {
-    alt((
+    cut(alt((
         value(ElementBody::Void, void),
         map(block, ElementBody::Block),
-        cut(fail),
-    ))(input)
+    )))(input)
 }
 
 fn non_empty_attribute(input: &str) -> NomResult<Attribute> {
@@ -228,7 +227,7 @@ fn nodes(input: &str) -> NomResult<Vec<Node>> {
     ))(input)
 }
 
-fn markup(input: &str) -> Result<Markup, VerboseError<&str>> {
+fn markup(input: &str) -> Result<Markup, ParserError<&str>> {
     all_consuming(map(nodes, |n| Markup { nodes: n }))(input)
         .finish()
         .map(|(_, markup)| markup)
@@ -238,7 +237,6 @@ pub fn parse_range(src: &str, range: Range<usize>) -> Result<Markup, ParseError>
     let content = src[range].trim();
 
     markup(content).map_err(|e| {
-        dbg!(&e);
         let (remaining_input, _) = e.errors.first().unwrap();
         let offset = src.find(remaining_input).unwrap_or_default();
 
