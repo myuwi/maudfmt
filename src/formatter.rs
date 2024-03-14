@@ -1,7 +1,13 @@
 use crate::parser::{
-    AttributeValue, Block, ControlStructure, Element, ElementBody, Else, For, If, Markup, Node,
-    Splice,
+    AttributeValue, Block, ControlStructure, Element, ElementBody, Else, For, If, Let, Markup,
+    Node, Splice,
 };
+
+fn format_let(out: &mut String, let_: &Let, _depth: usize, _inline: bool) {
+    out.push_str("let ");
+    out.push_str(let_.expr);
+    out.push(';');
+}
 
 fn format_for(out: &mut String, for_: &For, depth: usize, inline: bool) {
     out.push_str("for ");
@@ -101,6 +107,7 @@ fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool)
                 match s {
                     ControlStructure::If(i) => format_if(out, i, depth, inline),
                     ControlStructure::For(f) => format_for(out, f, depth, inline),
+                    ControlStructure::Let(l) => format_let(out, l, depth, inline),
                 }
             }
         }

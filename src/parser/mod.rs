@@ -7,7 +7,7 @@ use nom::{
     character::complete::{alpha1, alphanumeric1, char, multispace0, multispace1},
     combinator::{all_consuming, cut, map, opt, recognize, value},
     multi::{many0, separated_list0},
-    sequence::{delimited, pair, preceded, separated_pair, tuple},
+    sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
     Finish,
 };
 
@@ -21,7 +21,7 @@ mod pattern;
 
 use combinator::ws;
 use error::ParserError;
-use expr::expr;
+use expr::{expr, group};
 use ident::keyword;
 use literal::str_lit;
 use pattern::pattern;
@@ -29,6 +29,11 @@ use pattern::pattern;
 use crate::error::ParseError;
 
 pub type NomResult<'a, O> = Result<(&'a str, O), nom::Err<ParserError<&'a str>>>;
+
+#[derive(Clone, Debug)]
+pub struct Let<'a> {
+    pub expr: &'a str,
+}
 
 #[derive(Clone, Debug)]
 pub struct For<'a> {
@@ -54,6 +59,7 @@ pub struct If<'a> {
 pub enum ControlStructure<'a> {
     If(If<'a>),
     For(For<'a>),
+    Let(Let<'a>),
 }
 
 #[derive(Clone, Debug)]
@@ -106,6 +112,13 @@ pub struct Markup<'a> {
     pub nodes: Vec<Node<'a>>,
 }
 
+fn let_expr(input: &str) -> NomResult<Let> {
+    preceded(
+        keyword("let"),
+        map(terminated(ws(expr(true)), char(';')), |expr| Let { expr }),
+    )(input)
+}
+
 fn for_expr(input: &str) -> NomResult<For> {
     preceded(
         keyword("for"),
@@ -149,13 +162,14 @@ fn control_structure(input: &str) -> NomResult<ControlStructure> {
         cut(alt((
             map(if_expr, ControlStructure::If),
             map(for_expr, ControlStructure::For),
+            map(let_expr, ControlStructure::Let),
         ))),
     )(input)
 }
 
 fn splice(input: &str) -> NomResult<Splice> {
-    map(delimited(char('('), ws(expr(true)), char(')')), |expr| {
-        Splice { expr }
+    map(group('(', ')'), |expr| Splice {
+        expr: expr[1..expr.len() - 1].trim(),
     })(input)
 }
 
