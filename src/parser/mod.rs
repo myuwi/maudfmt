@@ -31,6 +31,18 @@ use crate::error::ParseError;
 pub type NomResult<'a, O> = Result<(&'a str, O), nom::Err<ParserError<&'a str>>>;
 
 #[derive(Clone, Debug)]
+pub struct MatchArm<'a> {
+    pub pattern: &'a str,
+    pub body: Node<'a>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Match<'a> {
+    pub scrut: &'a str,
+    pub arms: Vec<MatchArm<'a>>,
+}
+
+#[derive(Clone, Debug)]
 pub struct Let<'a> {
     pub expr: &'a str,
 }
@@ -60,6 +72,7 @@ pub enum ControlStructure<'a> {
     If(If<'a>),
     For(For<'a>),
     Let(Let<'a>),
+    Match(Match<'a>),
 }
 
 #[derive(Clone, Debug)]
@@ -110,6 +123,30 @@ pub enum Node<'a> {
 #[derive(Clone, Debug)]
 pub struct Markup<'a> {
     pub nodes: Vec<Node<'a>>,
+}
+
+fn match_arms(input: &str) -> NomResult<Vec<MatchArm>> {
+    many0(map(
+        ws(separated_pair(
+            expr(true),
+            ws(tag("=>")),
+            terminated(node, opt(char(','))),
+        )),
+        |(pattern, body)| MatchArm { pattern, body },
+    ))(input)
+}
+
+fn match_expr(input: &str) -> NomResult<Match> {
+    preceded(
+        keyword("match"),
+        map(
+            pair(
+                ws(expr(false)),
+                delimited(char('{'), ws(match_arms), char('}')),
+            ),
+            |(scrut, arms)| Match { scrut, arms },
+        ),
+    )(input)
 }
 
 fn let_expr(input: &str) -> NomResult<Let> {
@@ -163,6 +200,7 @@ fn control_structure(input: &str) -> NomResult<ControlStructure> {
             map(if_expr, ControlStructure::If),
             map(for_expr, ControlStructure::For),
             map(let_expr, ControlStructure::Let),
+            map(match_expr, ControlStructure::Match),
         ))),
     )(input)
 }
@@ -228,17 +266,18 @@ fn element(input: &str) -> NomResult<Element> {
     })(input)
 }
 
-fn nodes(input: &str) -> NomResult<Vec<Node>> {
-    many0(preceded(
-        multispace0,
-        alt((
-            map(element, Node::Element),
-            map(str_lit, Node::StrLit),
-            map(block, Node::Block),
-            map(splice, Node::Splice),
-            map(control_structure, Node::ControlStructure),
-        )),
+fn node(input: &str) -> NomResult<Node> {
+    alt((
+        map(element, Node::Element),
+        map(str_lit, Node::StrLit),
+        map(block, Node::Block),
+        map(splice, Node::Splice),
+        map(control_structure, Node::ControlStructure),
     ))(input)
+}
+
+fn nodes(input: &str) -> NomResult<Vec<Node>> {
+    many0(preceded(multispace0, node))(input)
 }
 
 fn markup(input: &str) -> Result<Markup, ParserError<&str>> {
@@ -251,6 +290,7 @@ pub fn parse_range(src: &str, range: Range<usize>) -> Result<Markup, ParseError>
     let content = src[range].trim();
 
     markup(content).map_err(|e| {
+        dbg!(&e);
         let (remaining_input, _) = e.errors.first().unwrap();
         let offset = src.find(remaining_input).unwrap_or_default();
 

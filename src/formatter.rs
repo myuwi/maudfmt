@@ -1,7 +1,37 @@
 use crate::parser::{
     AttributeValue, Block, ControlStructure, Element, ElementBody, Else, For, If, Let, Markup,
-    Node, Splice,
+    Match, MatchArm, Node, Splice,
 };
+
+fn format_match_arm(out: &mut String, match_arm: &MatchArm, depth: usize, inline: bool) {
+    out.push_str(&" ".repeat(depth * 4));
+    out.push_str(match_arm.pattern);
+    out.push_str(" => ");
+    format_node(out, &match_arm.body, depth, inline);
+}
+
+fn format_match_arms(out: &mut String, match_arms: &Vec<MatchArm>, depth: usize, inline: bool) {
+    for match_arm in match_arms {
+        format_match_arm(out, match_arm, depth + 1, inline);
+
+        if !matches!(match_arm.body, Node::Block(_)) {
+            out.push(',');
+        }
+
+        out.push('\n');
+    }
+}
+
+fn format_match(out: &mut String, match_: &Match, depth: usize, inline: bool) {
+    out.push_str("match ");
+    out.push_str(match_.scrut);
+    out.push_str(" {\n");
+
+    format_match_arms(out, &match_.arms, depth, inline);
+
+    out.push_str(&" ".repeat(depth * 4));
+    out.push('}');
+}
 
 fn format_let(out: &mut String, let_: &Let, _depth: usize, _inline: bool) {
     out.push_str("let ");
@@ -86,6 +116,24 @@ fn format_element(out: &mut String, element: &Element, depth: usize, inline: boo
     }
 }
 
+fn format_node(out: &mut String, node: &Node, depth: usize, inline: bool) {
+    match node {
+        Node::Element(e) => format_element(out, e, depth, inline),
+        Node::Block(b) => format_block(out, b, depth, inline),
+        Node::StrLit(s) => format_string(out, s),
+        Node::Splice(s) => format_splice(out, s),
+        Node::ControlStructure(s) => {
+            out.push('@');
+            match s {
+                ControlStructure::If(i) => format_if(out, i, depth, inline),
+                ControlStructure::For(f) => format_for(out, f, depth, inline),
+                ControlStructure::Let(l) => format_let(out, l, depth, inline),
+                ControlStructure::Match(m) => format_match(out, m, depth, inline),
+            }
+        }
+    }
+}
+
 fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool) {
     for node in nodes {
         if !out.is_empty() {
@@ -97,20 +145,7 @@ fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool)
             }
         }
 
-        match &node {
-            Node::Element(e) => format_element(out, e, depth, inline),
-            Node::Block(b) => format_block(out, b, depth, inline),
-            Node::StrLit(s) => format_string(out, s),
-            Node::Splice(s) => format_splice(out, s),
-            Node::ControlStructure(s) => {
-                out.push('@');
-                match s {
-                    ControlStructure::If(i) => format_if(out, i, depth, inline),
-                    ControlStructure::For(f) => format_for(out, f, depth, inline),
-                    ControlStructure::Let(l) => format_let(out, l, depth, inline),
-                }
-            }
-        }
+        format_node(out, node, depth, inline);
     }
 
     if inline {
