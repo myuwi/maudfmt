@@ -234,7 +234,7 @@ fn body(input: &str) -> NomResult<ElementBody> {
 }
 
 fn non_empty_attribute(input: &str) -> NomResult<Attribute> {
-    map(separated_pair(tag_name, char('='), str_lit), |a| {
+    map(separated_pair(tag_name, ws(char('=')), str_lit), |a| {
         Attribute {
             name: a.0,
             value: AttributeValue::String(a.1),
