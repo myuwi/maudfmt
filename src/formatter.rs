@@ -3,10 +3,12 @@ use crate::parser::{
     Match, MatchArm, Node, Splice,
 };
 
+fn indent(depth: usize) -> String {
+    " ".repeat(depth * 4)
+}
+
 fn format_match_arm(out: &mut String, match_arm: &MatchArm, depth: usize, inline: bool) {
-    out.push_str(&" ".repeat(depth * 4));
-    out.push_str(match_arm.pattern);
-    out.push_str(" => ");
+    out.push_str(&format!("{}{} => ", indent(depth), match_arm.pattern));
     format_node(out, &match_arm.body, depth, inline);
 }
 
@@ -22,52 +24,44 @@ fn format_match_arms(out: &mut String, match_arms: &Vec<MatchArm>, depth: usize,
     }
 }
 
-fn format_match(out: &mut String, match_: &Match, depth: usize, inline: bool) {
-    out.push_str("match ");
-    out.push_str(match_.scrut);
-    out.push_str(" {\n");
+fn format_match(out: &mut String, r#match: &Match, depth: usize, inline: bool) {
+    out.push_str(&format!("match {} {{", r#match.scrut));
 
-    format_match_arms(out, &match_.arms, depth, inline);
+    if !r#match.arms.is_empty() {
+        out.push('\n');
+        format_match_arms(out, &r#match.arms, depth, inline);
+        out.push_str(&indent(depth));
+    }
 
-    out.push_str(&" ".repeat(depth * 4));
     out.push('}');
 }
 
-fn format_let(out: &mut String, let_: &Let, _depth: usize, _inline: bool) {
-    out.push_str("let ");
-    out.push_str(let_.expr);
-    out.push(';');
+fn format_let(out: &mut String, r#let: &Let, _depth: usize, _inline: bool) {
+    out.push_str(&format!("let {};", r#let.expr));
 }
 
-fn format_for(out: &mut String, for_: &For, depth: usize, inline: bool) {
-    out.push_str("for ");
-    out.push_str(for_.pattern);
-    out.push_str(" in ");
-    out.push_str(for_.expr);
-    out.push(' ');
+fn format_for(out: &mut String, r#for: &For, depth: usize, inline: bool) {
+    out.push_str(&format!("for {} in {} ", r#for.pattern, r#for.expr));
 
-    format_block(out, &for_.body, depth, inline);
+    format_block(out, &r#for.body, depth, inline);
 }
 
-fn format_else(out: &mut String, else_: &Else, depth: usize, inline: bool) {
-    out.push_str("@else ");
+fn format_else(out: &mut String, r#else: &Else, depth: usize, inline: bool) {
+    out.push_str(" @else ");
 
-    match else_ {
-        Else::If(if_) => format_if(out, if_, depth, inline),
+    match r#else {
+        Else::If(r#if) => format_if(out, r#if, depth, inline),
         Else::Then(block) => format_block(out, block, depth, inline),
     }
 }
 
-fn format_if(out: &mut String, if_: &If, depth: usize, inline: bool) {
-    out.push_str("if ");
-    out.push_str(if_.cond);
-    out.push(' ');
+fn format_if(out: &mut String, r#if: &If, depth: usize, inline: bool) {
+    out.push_str(&format!("if {} ", r#if.cond));
 
-    format_block(out, &if_.body, depth, inline);
+    format_block(out, &r#if.body, depth, inline);
 
-    if let Some(ref else_) = if_.else_clause {
-        out.push(' ');
-        format_else(out, else_, depth, inline)
+    if let Some(r#else) = &r#if.else_clause {
+        format_else(out, r#else, depth, inline)
     }
 }
 
@@ -79,15 +73,28 @@ fn format_splice(out: &mut String, splice: &Splice) {
     out.push_str(&format!("({})", splice.expr));
 }
 
+fn contains_control_structure(nodes: &[Node]) -> bool {
+    nodes.iter().any(|node| match node {
+        Node::Block(b)
+        | Node::Element(Element {
+            body: ElementBody::Block(b),
+            ..
+        }) => contains_control_structure(&b.nodes),
+        Node::ControlStructure(_) => true,
+        _ => false,
+    })
+}
+
 fn format_block(out: &mut String, block: &Block, depth: usize, inline: bool) {
     out.push('{');
 
     if !block.nodes.is_empty() {
-        let inline = !block.newline || inline;
+        let inline = (!block.newline || inline) && !contains_control_structure(&block.nodes);
+
         format_nodes(out, &block.nodes, depth + 1, inline);
 
         if !inline {
-            out.push_str(&" ".repeat(depth * 4));
+            out.push_str(&indent(depth));
         }
     }
 
@@ -141,7 +148,7 @@ fn format_nodes(out: &mut String, nodes: &Vec<Node>, depth: usize, inline: bool)
                 out.push(' ');
             } else {
                 out.push('\n');
-                out.push_str(&" ".repeat(depth * 4));
+                out.push_str(&indent(depth));
             }
         }
 
