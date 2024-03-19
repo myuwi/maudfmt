@@ -290,7 +290,6 @@ pub fn parse_range(src: &str, range: Range<usize>) -> Result<Markup, ParseError>
     let content = src[range].trim();
 
     markup(content).map_err(|e| {
-        dbg!(&e);
         let (remaining_input, _) = e.errors.first().unwrap();
         let offset = src.find(remaining_input).unwrap_or_default();
 
