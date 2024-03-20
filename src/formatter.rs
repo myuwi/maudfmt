@@ -69,19 +69,23 @@ fn format_string(out: &mut String, string: &str) {
     out.push_str(&format!("\"{}\"", string));
 }
 
+fn format_comment(out: &mut String, comment: &str) {
+    out.push_str(&format!("//{}", comment));
+}
+
 fn format_splice(out: &mut String, splice: &Splice) {
     out.push_str(&format!("({})", splice.expr));
 }
 
-fn contains_control_structure(nodes: &[Node]) -> bool {
-    nodes.iter().any(|node| match node {
+fn can_inline_block(nodes: &[Node]) -> bool {
+    nodes.iter().all(|node| match node {
         Node::Block(b)
         | Node::Element(Element {
             body: ElementBody::Block(b),
             ..
-        }) => contains_control_structure(&b.nodes),
-        Node::ControlStructure(_) => true,
-        _ => false,
+        }) => can_inline_block(&b.nodes),
+        Node::Comment(_) | Node::ControlStructure(_) => false,
+        _ => true,
     })
 }
 
@@ -89,7 +93,7 @@ fn format_block(out: &mut String, block: &Block, depth: usize, inline: bool) {
     out.push('{');
 
     if !block.nodes.is_empty() {
-        let inline = (!block.newline || inline) && !contains_control_structure(&block.nodes);
+        let inline = (!block.newline || inline) && can_inline_block(&block.nodes);
 
         format_nodes(out, &block.nodes, depth + 1, inline);
 
@@ -128,6 +132,7 @@ fn format_node(out: &mut String, node: &Node, depth: usize, inline: bool) {
         Node::Element(e) => format_element(out, e, depth, inline),
         Node::Block(b) => format_block(out, b, depth, inline),
         Node::StrLit(s) => format_string(out, s),
+        Node::Comment(s) => format_comment(out, s),
         Node::Splice(s) => format_splice(out, s),
         Node::ControlStructure(s) => {
             out.push('@');

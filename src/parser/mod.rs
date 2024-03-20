@@ -4,7 +4,7 @@ use miette::SourceSpan;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alpha1, alphanumeric1, char, multispace0, multispace1},
+    character::complete::{alpha1, alphanumeric1, char, multispace0, multispace1, not_line_ending},
     combinator::{all_consuming, cut, map, opt, recognize, value},
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, separated_pair, terminated, tuple},
@@ -116,6 +116,7 @@ pub enum Node<'a> {
     Element(Element<'a>),
     Block(Block<'a>),
     StrLit(&'a str),
+    Comment(&'a str),
     Splice(Splice<'a>),
     ControlStructure(ControlStructure<'a>),
 }
@@ -222,6 +223,10 @@ fn block(input: &str) -> NomResult<Block> {
     )(input)
 }
 
+fn comment(input: &str) -> NomResult<&str> {
+    delimited(tag("//"), not_line_ending, multispace0)(input)
+}
+
 fn void(input: &str) -> NomResult<()> {
     value((), char(';'))(input)
 }
@@ -270,6 +275,7 @@ fn node(input: &str) -> NomResult<Node> {
     alt((
         map(element, Node::Element),
         map(str_lit, Node::StrLit),
+        map(comment, Node::Comment),
         map(block, Node::Block),
         map(splice, Node::Splice),
         map(control_structure, Node::ControlStructure),
