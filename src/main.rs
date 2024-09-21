@@ -8,6 +8,8 @@ use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
 mod error;
 mod formatter;
+mod kind;
+mod lexer;
 mod parser;
 
 use crate::{formatter::format, parser::parse_range};
