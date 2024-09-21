@@ -3,23 +3,89 @@ source: src/lexer.rs
 expression: tokens
 ---
 [
-    LBrace,
-    Newline,
-    Whitespace,
-    Ident,
-    Whitespace,
-    LBrace,
-    Newline,
-    Whitespace,
-    Ident,
-    Whitespace,
-    LBrace,
-    RBrace,
-    Newline,
-    Whitespace,
-    RBrace,
-    Newline,
-    Whitespace,
-    RBrace,
-    Eof,
+    Token {
+        kind: LBrace,
+        text: "{",
+        span: 0..1,
+    },
+    Token {
+        kind: Newline,
+        text: "\n",
+        span: 1..2,
+    },
+    Token {
+        kind: Whitespace,
+        text: "            ",
+        span: 2..14,
+    },
+    Token {
+        kind: Ident,
+        text: "h1",
+        span: 14..16,
+    },
+    Token {
+        kind: Whitespace,
+        text: " ",
+        span: 16..17,
+    },
+    Token {
+        kind: LBrace,
+        text: "{",
+        span: 17..18,
+    },
+    Token {
+        kind: RBrace,
+        text: "}",
+        span: 18..19,
+    },
+    Token {
+        kind: Newline,
+        text: "\n",
+        span: 19..20,
+    },
+    Token {
+        kind: Whitespace,
+        text: "            ",
+        span: 20..32,
+    },
+    Token {
+        kind: Ident,
+        text: "p",
+        span: 32..33,
+    },
+    Token {
+        kind: Whitespace,
+        text: " ",
+        span: 33..34,
+    },
+    Token {
+        kind: LBrace,
+        text: "{",
+        span: 34..35,
+    },
+    Token {
+        kind: RBrace,
+        text: "}",
+        span: 35..36,
+    },
+    Token {
+        kind: Newline,
+        text: "\n",
+        span: 36..37,
+    },
+    Token {
+        kind: Whitespace,
+        text: "        ",
+        span: 37..45,
+    },
+    Token {
+        kind: RBrace,
+        text: "}",
+        span: 45..46,
+    },
+    Token {
+        kind: Eof,
+        text: "",
+        span: 46..46,
+    },
 ]

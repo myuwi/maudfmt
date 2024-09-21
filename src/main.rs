@@ -11,6 +11,7 @@ mod formatter;
 mod kind;
 mod lexer;
 mod parser;
+mod token;
 
 use crate::{formatter::format, parser::parse_range};
 

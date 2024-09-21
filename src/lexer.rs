@@ -1,11 +1,11 @@
 use unicode_ident::{is_xid_continue, is_xid_start};
 use unscanny::Scanner;
 
-use crate::kind::SyntaxKind;
+use crate::{kind::SyntaxKind, token::Token};
 
 pub struct Lexer<'a> {
     s: Scanner<'a>,
-    tokens: Vec<SyntaxKind>,
+    tokens: Vec<Token<'a>>,
 }
 
 #[allow(dead_code)]
@@ -17,10 +17,15 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn tokenize(mut self) -> Vec<SyntaxKind> {
+    pub fn tokenize(mut self) -> Vec<Token<'a>> {
         loop {
+            let start = self.s.cursor();
             let kind = self.next();
-            self.tokens.push(kind);
+            let end = self.s.cursor();
+            let span = start..end;
+            let text = self.s.get(span.clone());
+
+            self.tokens.push(Token { kind, text, span });
 
             if kind.is_eof() {
                 break;
@@ -84,9 +89,8 @@ mod tests {
     #[test]
     fn basic() {
         let input = r#"{
-            h1 {
-                p {}
-            }
+            h1 {}
+            p {}
         }"#;
 
         let tokens = Lexer::new(input).tokenize();
