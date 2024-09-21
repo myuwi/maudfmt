@@ -76,3 +76,21 @@ fn is_ident_start(c: char) -> bool {
 fn is_ident_continue(c: char) -> bool {
     is_xid_continue(c) || c == '-'
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic() {
+        let input = r#"{
+            h1 {
+                p {}
+            }
+        }"#;
+
+        let tokens = Lexer::new(input).tokenize();
+
+        insta::assert_debug_snapshot!(tokens);
+    }
+}

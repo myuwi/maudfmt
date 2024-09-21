@@ -1,0 +1,25 @@
+---
+source: src/lexer.rs
+expression: tokens
+---
+[
+    LBrace,
+    Newline,
+    Whitespace,
+    Ident,
+    Whitespace,
+    LBrace,
+    Newline,
+    Whitespace,
+    Ident,
+    Whitespace,
+    LBrace,
+    RBrace,
+    Newline,
+    Whitespace,
+    RBrace,
+    Newline,
+    Whitespace,
+    RBrace,
+    Eof,
+]

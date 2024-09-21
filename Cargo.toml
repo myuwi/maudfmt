@@ -14,3 +14,9 @@ syn = { version = "2.0.51", features = ["full", "parsing", "visit"] }
 thiserror = "1.0.57"
 unicode-ident = "1.0.13"
 unscanny = "0.1.0"
+
+[dev-dependencies]
+insta = { version = "1.40.0" }
+
+[profile.dev.package]
+insta.opt-level = 3
