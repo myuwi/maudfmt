@@ -41,6 +41,7 @@ impl<'a> Lexer<'a> {
             Some(c) if is_ident_start(c) => self.ident(),
             Some('{') => SyntaxKind::LBrace,
             Some('}') => SyntaxKind::RBrace,
+            Some('"') => self.string(),
             None => SyntaxKind::Eof,
             _ => panic!("Invalid character"),
         }
@@ -61,6 +62,15 @@ impl<'a> Lexer<'a> {
     fn ident(&mut self) -> SyntaxKind {
         self.s.eat_while(is_ident_continue);
         SyntaxKind::Ident
+    }
+
+    fn string(&mut self) -> SyntaxKind {
+        // TODO: Escaped strings
+        self.s.eat_until('"');
+        if !self.s.eat_if('"') {
+            panic!("Unterminated string")
+        }
+        SyntaxKind::Str
     }
 }
 
@@ -89,7 +99,7 @@ mod tests {
     #[test]
     fn basic() {
         let input = r#"{
-            h1 {}
+            h1 { "Hello world" }
             p {}
         }"#;
 

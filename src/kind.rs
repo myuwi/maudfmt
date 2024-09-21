@@ -15,6 +15,9 @@ pub enum SyntaxKind {
     /// A valid maud identifier
     Ident,
 
+    /// Quote delimited string
+    Str,
+
     /// End of file
     Eof,
 }
