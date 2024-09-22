@@ -65,10 +65,13 @@ impl<'a> Lexer<'a> {
     }
 
     fn string(&mut self) -> SyntaxKind {
-        // TODO: Escaped strings
-        self.s.eat_until('"');
-        if !self.s.eat_if('"') {
-            panic!("Unterminated string")
+        loop {
+            match self.s.eat() {
+                Some('\\') => self.s.eat(),
+                Some('"') => break,
+                None => panic!("Unterminated string"),
+                _ => None,
+            };
         }
         SyntaxKind::Str
     }
@@ -100,7 +103,7 @@ mod tests {
     fn basic() {
         let input = r#"{
             h1 { "Hello world" }
-            p {}
+            p { "\"This string contains escaped quotes \"" }
         }"#;
 
         let tokens = Lexer::new(input).tokenize();

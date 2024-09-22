@@ -79,28 +79,43 @@ expression: tokens
         span: 49..50,
     },
     Token {
+        kind: Whitespace,
+        text: " ",
+        span: 50..51,
+    },
+    Token {
+        kind: Str,
+        text: "\"\\\"This string contains escaped quotes \\\"\"",
+        span: 51..93,
+    },
+    Token {
+        kind: Whitespace,
+        text: " ",
+        span: 93..94,
+    },
+    Token {
         kind: RBrace,
         text: "}",
-        span: 50..51,
+        span: 94..95,
     },
     Token {
         kind: Newline,
         text: "\n",
-        span: 51..52,
+        span: 95..96,
     },
     Token {
         kind: Whitespace,
         text: "        ",
-        span: 52..60,
+        span: 96..104,
     },
     Token {
         kind: RBrace,
         text: "}",
-        span: 60..61,
+        span: 104..105,
     },
     Token {
         kind: Eof,
         text: "",
-        span: 61..61,
+        span: 105..105,
     },
 ]
