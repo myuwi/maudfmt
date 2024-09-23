@@ -17,13 +17,4 @@ pub enum SyntaxKind {
 
     /// Quote delimited string
     Str,
-
-    /// End of file
-    Eof,
-}
-
-impl SyntaxKind {
-    pub fn is_eof(self) -> bool {
-        self == Self::Eof
-    }
 }

@@ -113,9 +113,4 @@ expression: tokens
         text: "}",
         span: 104..105,
     },
-    Token {
-        kind: Eof,
-        text: "",
-        span: 105..105,
-    },
 ]

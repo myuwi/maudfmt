@@ -18,33 +18,30 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn tokenize(mut self) -> Vec<Token<'a>> {
-        loop {
-            let start = self.s.cursor();
-            let kind = self.next();
-            let end = self.s.cursor();
-            let span = start..end;
-            let text = self.s.get(span.clone());
-
-            self.tokens.push(Token { kind, text, span });
-
-            if kind.is_eof() {
-                break;
-            }
+        while let Some(token) = self.next() {
+            self.tokens.push(token);
         }
         self.tokens
     }
 
-    fn next(&mut self) -> SyntaxKind {
-        match self.s.eat() {
-            Some(c) if is_space(c) => self.whitespace(),
-            Some(c) if is_newline(c) => self.newline(),
-            Some(c) if is_ident_start(c) => self.ident(),
-            Some('{') => SyntaxKind::LBrace,
-            Some('}') => SyntaxKind::RBrace,
-            Some('"') => self.string(),
-            None => SyntaxKind::Eof,
+    fn next(&mut self) -> Option<Token<'a>> {
+        let start = self.s.cursor();
+
+        let kind = match self.s.eat()? {
+            c if is_space(c) => self.whitespace(),
+            c if is_newline(c) => self.newline(),
+            c if is_ident_start(c) => self.ident(),
+            '{' => SyntaxKind::LBrace,
+            '}' => SyntaxKind::RBrace,
+            '"' => self.string(),
             _ => panic!("Invalid character"),
-        }
+        };
+
+        let end = self.s.cursor();
+        let span = start..end;
+        let text = self.s.get(span.clone());
+
+        Some(Token { kind, text, span })
     }
 
     fn whitespace(&mut self) -> SyntaxKind {
