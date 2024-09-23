@@ -1,5 +1,5 @@
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum SyntaxKind {
+pub enum TokenKind {
     /// A sequence of characters matching `Char::is_whitespace`, excluding '\n' and '\r'
     Whitespace,
 

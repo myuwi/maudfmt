@@ -1,7 +1,7 @@
 use unicode_ident::{is_xid_continue, is_xid_start};
 use unscanny::Scanner;
 
-use crate::{kind::SyntaxKind, token::Token};
+use crate::{kind::TokenKind, token::Token};
 
 pub struct Lexer<'a> {
     s: Scanner<'a>,
@@ -31,8 +31,8 @@ impl<'a> Lexer<'a> {
             c if is_space(c) => self.whitespace(),
             c if is_newline(c) => self.newline(),
             c if is_ident_start(c) => self.ident(),
-            '{' => SyntaxKind::LBrace,
-            '}' => SyntaxKind::RBrace,
+            '{' => TokenKind::LBrace,
+            '}' => TokenKind::RBrace,
             '"' => self.string(),
             _ => panic!("Invalid character"),
         };
@@ -44,24 +44,24 @@ impl<'a> Lexer<'a> {
         Some(Token { kind, text, span })
     }
 
-    fn whitespace(&mut self) -> SyntaxKind {
+    fn whitespace(&mut self) -> TokenKind {
         self.s.eat_while(is_space);
-        SyntaxKind::Whitespace
+        TokenKind::Whitespace
     }
 
-    fn newline(&mut self) -> SyntaxKind {
+    fn newline(&mut self) -> TokenKind {
         if self.s.before().ends_with('\r') {
             self.s.eat_if('\n');
         }
-        SyntaxKind::Newline
+        TokenKind::Newline
     }
 
-    fn ident(&mut self) -> SyntaxKind {
+    fn ident(&mut self) -> TokenKind {
         self.s.eat_while(is_ident_continue);
-        SyntaxKind::Ident
+        TokenKind::Ident
     }
 
-    fn string(&mut self) -> SyntaxKind {
+    fn string(&mut self) -> TokenKind {
         loop {
             match self.s.eat() {
                 Some('\\') => self.s.eat(),
@@ -70,7 +70,7 @@ impl<'a> Lexer<'a> {
                 _ => None,
             };
         }
-        SyntaxKind::Str
+        TokenKind::Str
     }
 }
 
