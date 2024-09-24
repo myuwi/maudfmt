@@ -8,7 +8,6 @@ use crate::{
 
 pub struct Lexer<'a> {
     s: Scanner<'a>,
-    tokens: Vec<TokenWithTrivia<'a>>,
 }
 
 #[allow(dead_code)]
@@ -16,52 +15,10 @@ impl<'a> Lexer<'a> {
     pub fn new(text: &'a str) -> Self {
         Self {
             s: Scanner::new(text),
-            tokens: Vec::new(),
         }
     }
 
-    pub fn tokenize(mut self) -> Vec<TokenWithTrivia<'a>> {
-        while let Some(token) = self.next() {
-            self.tokens.push(token);
-        }
-        self.tokens
-    }
-
-    fn next(&mut self) -> Option<TokenWithTrivia<'a>> {
-        let mut leading_trivia = Vec::new();
-
-        let token = loop {
-            let t = self.process_next()?;
-            if t.kind.is_trivia() {
-                leading_trivia.push(t);
-                continue;
-            };
-            break t;
-        };
-
-        let mut trailing_trivia = Vec::new();
-        loop {
-            if let Some(next) = self.s.peek() {
-                if is_trivia_start(next) {
-                    trailing_trivia.push(self.process_next().expect("should get trivia"));
-
-                    // Trailing trivia should end at the first newline
-                    if !is_newline(next) {
-                        continue;
-                    }
-                }
-            }
-            break;
-        }
-
-        Some(TokenWithTrivia {
-            leading_trivia,
-            token,
-            trailing_trivia,
-        })
-    }
-
-    fn process_next(&mut self) -> Option<Token<'a>> {
+    fn process_next_token(&mut self) -> Option<Token<'a>> {
         let start = self.s.cursor();
 
         let kind = match self.s.eat()? {
@@ -111,6 +68,44 @@ impl<'a> Lexer<'a> {
     }
 }
 
+impl<'a> Iterator for Lexer<'a> {
+    type Item = TokenWithTrivia<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut leading_trivia = Vec::new();
+
+        let token = loop {
+            let t = self.process_next_token()?;
+            if t.kind.is_trivia() {
+                leading_trivia.push(t);
+                continue;
+            };
+            break t;
+        };
+
+        let mut trailing_trivia = Vec::new();
+        loop {
+            if let Some(next) = self.s.peek() {
+                if is_trivia_start(next) {
+                    trailing_trivia.push(self.process_next_token().expect("should get trivia"));
+
+                    // Trailing trivia should end at the first newline
+                    if !is_newline(next) {
+                        continue;
+                    }
+                }
+            }
+            break;
+        }
+
+        Some(TokenWithTrivia {
+            leading_trivia,
+            token,
+            trailing_trivia,
+        })
+    }
+}
+
 /// Any non-newline whitespace characters
 fn is_space(c: char) -> bool {
     c.is_whitespace() && !is_newline(c)
@@ -144,7 +139,8 @@ mod tests {
             p { "\"This string contains escaped quotes \"" }
         }"#;
 
-        let tokens = Lexer::new(input).tokenize();
+        let lexer = Lexer::new(input);
+        let tokens = lexer.collect::<Vec<_>>();
 
         insta::assert_debug_snapshot!(tokens);
     }
