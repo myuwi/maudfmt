@@ -1,11 +1,14 @@
 use unicode_ident::{is_xid_continue, is_xid_start};
 use unscanny::Scanner;
 
-use crate::{kind::TokenKind, token::Token};
+use crate::{
+    kind::TokenKind,
+    token::{Token, TokenWithTrivia},
+};
 
 pub struct Lexer<'a> {
     s: Scanner<'a>,
-    tokens: Vec<Token<'a>>,
+    tokens: Vec<TokenWithTrivia<'a>>,
 }
 
 #[allow(dead_code)]
@@ -17,14 +20,48 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn tokenize(mut self) -> Vec<Token<'a>> {
+    pub fn tokenize(mut self) -> Vec<TokenWithTrivia<'a>> {
         while let Some(token) = self.next() {
             self.tokens.push(token);
         }
         self.tokens
     }
 
-    fn next(&mut self) -> Option<Token<'a>> {
+    fn next(&mut self) -> Option<TokenWithTrivia<'a>> {
+        let mut leading_trivia = Vec::new();
+
+        let token = loop {
+            let t = self.process_next()?;
+            if t.kind.is_trivia() {
+                leading_trivia.push(t);
+                continue;
+            };
+            break t;
+        };
+
+        let mut trailing_trivia = Vec::new();
+        loop {
+            if let Some(next) = self.s.peek() {
+                if is_trivia_start(next) {
+                    trailing_trivia.push(self.process_next().expect("should get trivia"));
+
+                    // Trailing trivia should end at the first newline
+                    if !is_newline(next) {
+                        continue;
+                    }
+                }
+            }
+            break;
+        }
+
+        Some(TokenWithTrivia {
+            leading_trivia,
+            token,
+            trailing_trivia,
+        })
+    }
+
+    fn process_next(&mut self) -> Option<Token<'a>> {
         let start = self.s.cursor();
 
         let kind = match self.s.eat()? {
@@ -82,6 +119,10 @@ fn is_space(c: char) -> bool {
 /// '\n' or '\r'
 fn is_newline(c: char) -> bool {
     c == '\n' || c == '\r'
+}
+
+fn is_trivia_start(c: char) -> bool {
+    is_space(c) || is_newline(c)
 }
 
 fn is_ident_start(c: char) -> bool {

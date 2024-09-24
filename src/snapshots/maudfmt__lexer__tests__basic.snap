@@ -3,114 +3,166 @@ source: src/lexer.rs
 expression: tokens
 ---
 [
-    Token {
-        kind: LBrace,
-        text: "{",
-        span: 0..1,
+    TokenWithTrivia {
+        token: Token {
+            kind: LBrace,
+            text: "{",
+            span: 0..1,
+        },
+        leading_trivia: [],
+        trailing_trivia: [
+            Token {
+                kind: Newline,
+                text: "\n",
+                span: 1..2,
+            },
+        ],
     },
-    Token {
-        kind: Newline,
-        text: "\n",
-        span: 1..2,
+    TokenWithTrivia {
+        token: Token {
+            kind: Ident,
+            text: "h1",
+            span: 14..16,
+        },
+        leading_trivia: [
+            Token {
+                kind: Whitespace,
+                text: "            ",
+                span: 2..14,
+            },
+        ],
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 16..17,
+            },
+        ],
     },
-    Token {
-        kind: Whitespace,
-        text: "            ",
-        span: 2..14,
+    TokenWithTrivia {
+        token: Token {
+            kind: LBrace,
+            text: "{",
+            span: 17..18,
+        },
+        leading_trivia: [],
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 18..19,
+            },
+        ],
     },
-    Token {
-        kind: Ident,
-        text: "h1",
-        span: 14..16,
+    TokenWithTrivia {
+        token: Token {
+            kind: Str,
+            text: "\"Hello world\"",
+            span: 19..32,
+        },
+        leading_trivia: [],
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 32..33,
+            },
+        ],
     },
-    Token {
-        kind: Whitespace,
-        text: " ",
-        span: 16..17,
+    TokenWithTrivia {
+        token: Token {
+            kind: RBrace,
+            text: "}",
+            span: 33..34,
+        },
+        leading_trivia: [],
+        trailing_trivia: [
+            Token {
+                kind: Newline,
+                text: "\n",
+                span: 34..35,
+            },
+        ],
     },
-    Token {
-        kind: LBrace,
-        text: "{",
-        span: 17..18,
+    TokenWithTrivia {
+        token: Token {
+            kind: Ident,
+            text: "p",
+            span: 47..48,
+        },
+        leading_trivia: [
+            Token {
+                kind: Whitespace,
+                text: "            ",
+                span: 35..47,
+            },
+        ],
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 48..49,
+            },
+        ],
     },
-    Token {
-        kind: Whitespace,
-        text: " ",
-        span: 18..19,
+    TokenWithTrivia {
+        token: Token {
+            kind: LBrace,
+            text: "{",
+            span: 49..50,
+        },
+        leading_trivia: [],
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 50..51,
+            },
+        ],
     },
-    Token {
-        kind: Str,
-        text: "\"Hello world\"",
-        span: 19..32,
+    TokenWithTrivia {
+        token: Token {
+            kind: Str,
+            text: "\"\\\"This string contains escaped quotes \\\"\"",
+            span: 51..93,
+        },
+        leading_trivia: [],
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 93..94,
+            },
+        ],
     },
-    Token {
-        kind: Whitespace,
-        text: " ",
-        span: 32..33,
+    TokenWithTrivia {
+        token: Token {
+            kind: RBrace,
+            text: "}",
+            span: 94..95,
+        },
+        leading_trivia: [],
+        trailing_trivia: [
+            Token {
+                kind: Newline,
+                text: "\n",
+                span: 95..96,
+            },
+        ],
     },
-    Token {
-        kind: RBrace,
-        text: "}",
-        span: 33..34,
-    },
-    Token {
-        kind: Newline,
-        text: "\n",
-        span: 34..35,
-    },
-    Token {
-        kind: Whitespace,
-        text: "            ",
-        span: 35..47,
-    },
-    Token {
-        kind: Ident,
-        text: "p",
-        span: 47..48,
-    },
-    Token {
-        kind: Whitespace,
-        text: " ",
-        span: 48..49,
-    },
-    Token {
-        kind: LBrace,
-        text: "{",
-        span: 49..50,
-    },
-    Token {
-        kind: Whitespace,
-        text: " ",
-        span: 50..51,
-    },
-    Token {
-        kind: Str,
-        text: "\"\\\"This string contains escaped quotes \\\"\"",
-        span: 51..93,
-    },
-    Token {
-        kind: Whitespace,
-        text: " ",
-        span: 93..94,
-    },
-    Token {
-        kind: RBrace,
-        text: "}",
-        span: 94..95,
-    },
-    Token {
-        kind: Newline,
-        text: "\n",
-        span: 95..96,
-    },
-    Token {
-        kind: Whitespace,
-        text: "        ",
-        span: 96..104,
-    },
-    Token {
-        kind: RBrace,
-        text: "}",
-        span: 104..105,
+    TokenWithTrivia {
+        token: Token {
+            kind: RBrace,
+            text: "}",
+            span: 104..105,
+        },
+        leading_trivia: [
+            Token {
+                kind: Whitespace,
+                text: "        ",
+                span: 96..104,
+            },
+        ],
+        trailing_trivia: [],
     },
 ]

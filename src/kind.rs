@@ -18,3 +18,9 @@ pub enum TokenKind {
     /// Quote delimited string
     Str,
 }
+
+impl TokenKind {
+    pub fn is_trivia(self) -> bool {
+        matches!(self, TokenKind::Newline | TokenKind::Whitespace)
+    }
+}
