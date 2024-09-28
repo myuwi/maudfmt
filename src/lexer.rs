@@ -1,3 +1,4 @@
+use ecow::EcoString;
 use unicode_ident::{is_xid_continue, is_xid_start};
 use unscanny::Scanner;
 
@@ -18,7 +19,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn process_next_token(&mut self) -> Option<Token<'a>> {
+    fn process_next_token(&mut self) -> Option<Token> {
         let start = self.s.cursor();
 
         let kind = match self.s.eat()? {
@@ -33,7 +34,7 @@ impl<'a> Lexer<'a> {
 
         let end = self.s.cursor();
         let span = start..end;
-        let text = self.s.get(span.clone());
+        let text = EcoString::from(self.s.get(span.clone()));
 
         Some(Token { kind, text, span })
     }
@@ -69,7 +70,7 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = TokenWithTrivia<'a>;
+    type Item = TokenWithTrivia;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut leading_trivia = Vec::new();

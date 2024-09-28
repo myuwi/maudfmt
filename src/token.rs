@@ -1,19 +1,21 @@
 use std::ops::Range;
 
+use ecow::EcoString;
+
 use crate::kind::TokenKind;
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct Token<'a> {
+pub struct Token {
     pub kind: TokenKind,
-    pub text: &'a str,
+    pub text: EcoString,
     pub span: Range<usize>,
 }
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct TokenWithTrivia<'a> {
-    pub token: Token<'a>,
-    pub leading_trivia: Vec<Token<'a>>,
-    pub trailing_trivia: Vec<Token<'a>>,
+pub struct TokenWithTrivia {
+    pub token: Token,
+    pub leading_trivia: Vec<Token>,
+    pub trailing_trivia: Vec<Token>,
 }

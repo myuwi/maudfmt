@@ -72,6 +72,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecow"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54bfbb1708988623190a6c4dbedaeaf0f53c20c6395abd6a01feb327b3146f4b"
+
+[[package]]
 name = "encode_unicode"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -139,6 +145,7 @@ checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
 name = "maudfmt"
 version = "0.1.0"
 dependencies = [
+ "ecow",
  "insta",
  "miette",
  "nom",
