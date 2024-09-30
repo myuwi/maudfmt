@@ -1,0 +1,134 @@
+---
+source: src/parser.rs
+expression: markup
+---
+Ok(
+    Markup {
+        root: Block {
+            open_brace: TokenWithTrivia {
+                leading_trivia: [],
+                token: Token {
+                    kind: LBrace,
+                    text: "{",
+                    span: 0..1,
+                },
+                trailing_trivia: [
+                    Token {
+                        kind: Newline,
+                        text: "\n",
+                        span: 1..2,
+                    },
+                ],
+            },
+            nodes: [
+                Element(
+                    Element {
+                        tag: TokenWithTrivia {
+                            leading_trivia: [
+                                Token {
+                                    kind: Whitespace,
+                                    text: "            ",
+                                    span: 2..14,
+                                },
+                            ],
+                            token: Token {
+                                kind: Ident,
+                                text: "h1",
+                                span: 14..16,
+                            },
+                            trailing_trivia: [
+                                Token {
+                                    kind: Whitespace,
+                                    text: " ",
+                                    span: 16..17,
+                                },
+                            ],
+                        },
+                        body: Block(
+                            Block {
+                                open_brace: TokenWithTrivia {
+                                    leading_trivia: [],
+                                    token: Token {
+                                        kind: LBrace,
+                                        text: "{",
+                                        span: 17..18,
+                                    },
+                                    trailing_trivia: [
+                                        Token {
+                                            kind: Newline,
+                                            text: "\n",
+                                            span: 18..19,
+                                        },
+                                    ],
+                                },
+                                nodes: [
+                                    Str(
+                                        Str(
+                                            TokenWithTrivia {
+                                                leading_trivia: [
+                                                    Token {
+                                                        kind: Whitespace,
+                                                        text: "                ",
+                                                        span: 19..35,
+                                                    },
+                                                ],
+                                                token: Token {
+                                                    kind: Str,
+                                                    text: "\"Hello world\"",
+                                                    span: 35..48,
+                                                },
+                                                trailing_trivia: [
+                                                    Token {
+                                                        kind: Newline,
+                                                        text: "\n",
+                                                        span: 48..49,
+                                                    },
+                                                ],
+                                            },
+                                        ),
+                                    ),
+                                ],
+                                close_brace: TokenWithTrivia {
+                                    leading_trivia: [
+                                        Token {
+                                            kind: Whitespace,
+                                            text: "            ",
+                                            span: 49..61,
+                                        },
+                                    ],
+                                    token: Token {
+                                        kind: RBrace,
+                                        text: "}",
+                                        span: 61..62,
+                                    },
+                                    trailing_trivia: [
+                                        Token {
+                                            kind: Newline,
+                                            text: "\n",
+                                            span: 62..63,
+                                        },
+                                    ],
+                                },
+                            },
+                        ),
+                    },
+                ),
+            ],
+            close_brace: TokenWithTrivia {
+                leading_trivia: [
+                    Token {
+                        kind: Whitespace,
+                        text: "        ",
+                        span: 63..71,
+                    },
+                ],
+                token: Token {
+                    kind: RBrace,
+                    text: "}",
+                    span: 71..72,
+                },
+                trailing_trivia: [],
+            },
+        },
+    },
+)

@@ -6,14 +6,12 @@ use std::{
 use miette::{miette, Report};
 use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
+mod ast;
 mod error;
-mod formatter;
 mod kind;
 mod lexer;
 mod parser;
 mod token;
-
-use crate::{formatter::format, parser::parse_range};
 
 const TAB_SIZE: usize = 4;
 
@@ -44,7 +42,7 @@ impl<'ast> Visit<'ast> for MacroVisitor {
 }
 
 fn format_code(input: &str, location: Vec<MacroLocation>) -> Result<String, Report> {
-    let mut out = input.to_string();
+    let out = input.to_string();
 
     for location in location.iter().rev() {
         let whitespace: usize = out
@@ -58,11 +56,9 @@ fn format_code(input: &str, location: Vec<MacroLocation>) -> Result<String, Repo
 
         let indent_level = whitespace / TAB_SIZE;
 
-        let markup = parse_range(input, location.byte_range.clone())?;
-
-        let formatted = format(markup, indent_level);
-
-        out.replace_range(location.byte_range.clone(), &format!(" {}", &formatted));
+        // let markup = parse_range(input, location.byte_range.clone())?;
+        // let formatted = format(markup, indent_level);
+        // out.replace_range(location.byte_range.clone(), &format!(" {}", &formatted));
     }
 
     Ok(out)

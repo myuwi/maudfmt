@@ -5,7 +5,7 @@ use ecow::EcoString;
 use crate::kind::TokenKind;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub text: EcoString,
