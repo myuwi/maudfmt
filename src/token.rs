@@ -15,7 +15,7 @@ pub struct Token {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct TokenWithTrivia {
-    pub token: Token,
     pub leading_trivia: Vec<Token>,
+    pub token: Token,
     pub trailing_trivia: Vec<Token>,
 }
