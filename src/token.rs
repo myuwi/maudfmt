@@ -12,6 +12,12 @@ pub struct Token {
     pub span: Range<usize>,
 }
 
+impl Token {
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct TokenWithTrivia {

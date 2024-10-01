@@ -7,7 +7,9 @@ use miette::{miette, Report};
 use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
 mod ast;
+mod doc;
 mod error;
+mod format;
 mod kind;
 mod lexer;
 mod parser;

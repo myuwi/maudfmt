@@ -1,0 +1,10 @@
+---
+source: src/format.rs
+expression: formatted
+---
+{
+    h1 { "Hello " b { "world" } }
+    p {
+        "Lorem ipsum"
+    }
+}
