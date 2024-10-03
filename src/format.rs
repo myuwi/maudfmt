@@ -1,8 +1,14 @@
+use pretty::RcDoc;
+
 use crate::ast::Markup;
 use crate::doc::Doc;
 
-pub fn pretty_print(markup: &Markup, width: usize) -> String {
+pub fn pretty_print(markup: &Markup, indent: usize, width: usize) -> String {
     let doc = markup.to_doc();
+    let doc = RcDoc::text(" ".repeat(indent))
+        .append(doc)
+        .nest(indent as isize);
+
     doc.pretty(width).to_string()
 }
 
@@ -23,7 +29,7 @@ h1 {         "Hello "
         }"#;
 
         let markup = Parser::new(input).parse().unwrap();
-        let formatted = pretty_print(&markup, 100);
+        let formatted = pretty_print(&markup, 0, 100);
 
         insta::assert_snapshot!(formatted);
     }

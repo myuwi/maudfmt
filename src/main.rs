@@ -15,52 +15,53 @@ mod lexer;
 mod parser;
 mod token;
 
-const TAB_SIZE: usize = 4;
-
-struct MacroLocation {
-    start_line: usize,
-    byte_range: Range<usize>,
-}
+use format::pretty_print;
+use parser::Parser;
 
 struct MacroVisitor {
-    locations: Vec<MacroLocation>,
+    ranges: Vec<Range<usize>>,
 }
 
 impl<'ast> Visit<'ast> for MacroVisitor {
     fn visit_macro(&mut self, macro_item: &'ast Macro) {
         if let Some(ident) = macro_item.path.segments.span().source_text() {
-            if ident.ends_with("html") {
-                let span = macro_item.span();
-                let start = span.start().line;
-                let range = span.byte_range();
+            let macro_names = ["html".to_string(), "maud::html".to_string()];
 
-                self.locations.push(MacroLocation {
-                    start_line: start,
-                    byte_range: (range.start + ident.len() + 1)..range.end,
-                });
+            if macro_names.contains(&ident) {
+                let range = macro_item.span().byte_range();
+
+                self.ranges.push((range.start + ident.len() + 1)..range.end);
             }
         }
     }
 }
 
-fn format_code(input: &str, location: Vec<MacroLocation>) -> Result<String, Report> {
-    let out = input.to_string();
+fn get_macro_ranges(code: &str) -> Vec<Range<usize>> {
+    let ast = parse_file(code).unwrap();
+    let mut visitor = MacroVisitor { ranges: Vec::new() };
+    visitor.visit_file(&ast);
 
-    for location in location.iter().rev() {
-        let whitespace: usize = out
-            .lines()
-            .nth(location.start_line - 1)
-            .unwrap()
-            .chars()
-            .take_while(|ch| ch.is_whitespace() && *ch != '\n')
-            .map(|ch| ch.len_utf8())
-            .sum();
+    visitor.ranges
+}
 
-        let indent_level = whitespace / TAB_SIZE;
+fn format_code(input: &str, ranges: &[Range<usize>]) -> Result<String, Report> {
+    let mut out = input.to_string();
 
-        // let markup = parse_range(input, location.byte_range.clone())?;
-        // let formatted = format(markup, indent_level);
-        // out.replace_range(location.byte_range.clone(), &format!(" {}", &formatted));
+    for range in ranges.iter().rev() {
+        let indent = input[..range.start]
+            .rsplit_once('\n')
+            .map(|(_, s)| {
+                s.chars()
+                    .take_while(|ch| ch.is_whitespace() && *ch != '\n')
+                    .fold(0, |acc, c| acc + c.len_utf8())
+            })
+            .unwrap_or(0);
+
+        let content = &input[range.clone()];
+        let markup = Parser::new(content).parse().unwrap();
+        let pretty = pretty_print(&markup, indent, 100);
+
+        out.replace_range(range.clone(), &format!(" {}", pretty.trim()));
     }
 
     Ok(out)
@@ -73,15 +74,8 @@ fn main() -> Result<(), Report> {
         .read_to_string(&mut code)
         .map_err(|e| miette!("Error reading input: {}", e))?;
 
-    let ast = parse_file(&code).unwrap();
-
-    let mut visitor = MacroVisitor {
-        locations: Vec::new(),
-    };
-
-    visitor.visit_file(&ast);
-
-    let code = format_code(&code, visitor.locations)?;
+    let ranges = get_macro_ranges(&code);
+    let code = format_code(&code, &ranges)?;
     print!("{}", code);
 
     Ok(())

@@ -8,17 +8,17 @@ use crate::{
 const INDENT: isize = 4;
 
 pub trait Doc {
-    fn to_doc(&self) -> RcDoc<'_>;
+    fn to_doc(&self) -> RcDoc;
 }
 
 impl Doc for Markup {
-    fn to_doc(&self) -> RcDoc<'_> {
+    fn to_doc(&self) -> RcDoc {
         self.root.to_doc()
     }
 }
 
 impl Doc for Block {
-    fn to_doc(&self) -> RcDoc<'_> {
+    fn to_doc(&self) -> RcDoc {
         let mut doc = RcDoc::nil()
             .append(self.open_brace.token.text())
             .append(RcDoc::line())
@@ -46,7 +46,7 @@ impl Doc for Block {
 }
 
 impl Doc for Node {
-    fn to_doc(&self) -> RcDoc<'_> {
+    fn to_doc(&self) -> RcDoc {
         match self {
             Node::Element(element) => element.to_doc(),
             Node::Block(block) => block.to_doc(),
@@ -56,7 +56,7 @@ impl Doc for Node {
 }
 
 impl Doc for Element {
-    fn to_doc(&self) -> RcDoc<'_> {
+    fn to_doc(&self) -> RcDoc {
         RcDoc::text(self.tag.token.text())
             .append(RcDoc::space())
             .append(self.body.to_doc())
@@ -64,7 +64,7 @@ impl Doc for Element {
 }
 
 impl Doc for ElementBody {
-    fn to_doc(&self) -> RcDoc<'_> {
+    fn to_doc(&self) -> RcDoc {
         match self {
             ElementBody::Block(block) => block.to_doc(),
         }
@@ -72,7 +72,7 @@ impl Doc for ElementBody {
 }
 
 impl Doc for Str {
-    fn to_doc(&self) -> RcDoc<'_> {
+    fn to_doc(&self) -> RcDoc {
         RcDoc::text(self.0.token.text())
     }
 }
