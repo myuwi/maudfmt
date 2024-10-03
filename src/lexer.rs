@@ -11,7 +11,6 @@ pub struct Lexer<'a> {
     s: Scanner<'a>,
 }
 
-#[allow(dead_code)]
 impl<'a> Lexer<'a> {
     pub fn new(text: &'a str) -> Self {
         Self {

@@ -14,7 +14,6 @@ pub struct Parser<'a> {
     lexer: Peekable<Lexer<'a>>,
 }
 
-#[allow(dead_code)]
 impl<'a> Parser<'a> {
     pub fn new(input: &'a str) -> Self {
         let lexer = Lexer::new(input).peekable();
