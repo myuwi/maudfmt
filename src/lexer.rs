@@ -9,12 +9,14 @@ use crate::{
 
 pub struct Lexer<'a> {
     s: Scanner<'a>,
+    span_offset: usize,
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(text: &'a str) -> Self {
+    pub fn new(text: &'a str, span_offset: usize) -> Self {
         Self {
             s: Scanner::new(text),
+            span_offset,
         }
     }
 
@@ -32,8 +34,8 @@ impl<'a> Lexer<'a> {
         };
 
         let end = self.s.cursor();
-        let span = start..end;
-        let text = EcoString::from(self.s.get(span.clone()));
+        let text = EcoString::from(self.s.get(start..end));
+        let span = start + self.span_offset..end + self.span_offset;
 
         Some(Token { kind, text, span })
     }
@@ -139,7 +141,7 @@ mod tests {
             p { "\"This string contains escaped quotes \"" }
         }"#;
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(input, 0);
         let tokens = lexer.collect::<Vec<_>>();
 
         insta::assert_debug_snapshot!(tokens);

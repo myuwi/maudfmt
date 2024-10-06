@@ -1,15 +1,13 @@
-use std::ops::Range;
-
 use ecow::EcoString;
 
-use crate::kind::TokenKind;
+use crate::{kind::TokenKind, span::Span};
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub text: EcoString,
-    pub span: Range<usize>,
+    pub span: Span,
 }
 
 impl Token {

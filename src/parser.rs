@@ -15,8 +15,8 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: &'a str) -> Self {
-        let lexer = Lexer::new(input).peekable();
+    pub fn new(input: &'a str, span_offset: usize) -> Self {
+        let lexer = Lexer::new(input, span_offset).peekable();
         Self { lexer }
     }
 
@@ -24,11 +24,11 @@ impl<'a> Parser<'a> {
         self.parse_markup()
     }
 
-    pub fn next(&mut self) -> Option<TokenWithTrivia> {
+    fn next(&mut self) -> Option<TokenWithTrivia> {
         self.lexer.next()
     }
 
-    pub fn expect_next(&mut self, expected_kind: TokenKind) -> ParseResult<TokenWithTrivia> {
+    fn expect_next(&mut self, expected_kind: TokenKind) -> ParseResult<TokenWithTrivia> {
         let next = self.next().ok_or(ParseError::UnexpectedEndOfInput)?;
 
         if next.token.kind == expected_kind {
@@ -36,10 +36,12 @@ impl<'a> Parser<'a> {
         }
 
         // TODO: Better error reporting with `expected_kind`
-        Err(ParseError::UnexpectedToken(next.token))
+        Err(ParseError::UnexpectedToken {
+            span: next.token.span,
+        })
     }
 
-    pub fn peek(&mut self) -> Option<&TokenWithTrivia> {
+    fn peek(&mut self) -> Option<&TokenWithTrivia> {
         self.lexer.peek()
     }
 
@@ -76,7 +78,9 @@ impl<'a> Parser<'a> {
             TokenKind::LBrace => self.parse_block().map(Node::Block),
             TokenKind::Ident => self.parse_element().map(Node::Element),
             TokenKind::Str => self.parse_string().map(Node::Str),
-            _ => Err(ParseError::UnexpectedToken(peeked.token.clone())),
+            _ => Err(ParseError::UnexpectedToken {
+                span: peeked.token.span.clone(),
+            }),
         }
     }
 
@@ -112,7 +116,7 @@ mod tests {
             }
         }"#;
 
-        let markup = Parser::new(input).parse();
+        let markup = Parser::new(input, 0).parse();
 
         insta::assert_debug_snapshot!(markup);
     }

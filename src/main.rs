@@ -3,7 +3,7 @@ use std::{
     ops::Range,
 };
 
-use miette::{miette, Report};
+use miette::{miette, NamedSource, Report};
 use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
 mod ast;
@@ -13,6 +13,7 @@ mod format;
 mod kind;
 mod lexer;
 mod parser;
+mod span;
 mod token;
 
 use format::pretty_print;
@@ -36,12 +37,12 @@ impl<'ast> Visit<'ast> for MacroVisitor {
     }
 }
 
-fn get_macro_ranges(code: &str) -> Vec<Range<usize>> {
-    let ast = parse_file(code).unwrap();
+fn get_macro_ranges(code: &str) -> Result<Vec<Range<usize>>, Report> {
+    let ast = parse_file(code).map_err(|e| miette!("{}", e))?;
     let mut visitor = MacroVisitor { ranges: Vec::new() };
     visitor.visit_file(&ast);
 
-    visitor.ranges
+    Ok(visitor.ranges)
 }
 
 fn format_code(input: &str, ranges: &[Range<usize>]) -> Result<String, Report> {
@@ -58,7 +59,10 @@ fn format_code(input: &str, ranges: &[Range<usize>]) -> Result<String, Report> {
             .unwrap_or(0);
 
         let content = &input[range.clone()];
-        let markup = Parser::new(content).parse().unwrap();
+        let markup = Parser::new(content, range.start)
+            .parse()
+            .map_err(Report::new)
+            .map_err(|e| e.with_source_code(NamedSource::new("stdin", input.to_string())))?;
         let pretty = pretty_print(&markup, indent, 100);
 
         out.replace_range(range.clone(), &format!(" {}", pretty.trim()));
@@ -74,7 +78,7 @@ fn main() -> Result<(), Report> {
         .read_to_string(&mut code)
         .map_err(|e| miette!("Error reading input: {}", e))?;
 
-    let ranges = get_macro_ranges(&code);
+    let ranges = get_macro_ranges(&code)?;
     let code = format_code(&code, &ranges)?;
     print!("{}", code);
 

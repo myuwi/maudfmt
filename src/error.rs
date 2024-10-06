@@ -1,8 +1,18 @@
-use crate::token::Token;
+use miette::Diagnostic;
+use thiserror::Error;
 
-#[allow(dead_code)]
-#[derive(Debug)]
+use crate::span::Span;
+
+#[derive(Debug, Diagnostic, Error)]
 pub enum ParseError {
-    UnexpectedToken(Token),
+    #[error("Found unexpected token.")]
+    #[diagnostic(code("maudfmt::parser::unexpected_token"))]
+    UnexpectedToken {
+        #[label("here")]
+        span: Span,
+    },
+
+    #[error("Found unexpected end of input.")]
+    #[diagnostic(code("maudfmt::parser::unexpected_end_of_input"))]
     UnexpectedEndOfInput,
 }

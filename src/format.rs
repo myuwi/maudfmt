@@ -28,7 +28,7 @@ h1 {         "Hello "
 }
         }"#;
 
-        let markup = Parser::new(input).parse().unwrap();
+        let markup = Parser::new(input, 0).parse().unwrap();
         let formatted = pretty_print(&markup, 0, 100);
 
         insta::assert_snapshot!(formatted);
