@@ -1,0 +1,127 @@
+---
+source: src/lexer.rs
+expression: tokens
+---
+[
+    TokenWithTrivia {
+        leading_trivia: [],
+        token: Token {
+            kind: LBrace,
+            text: "{",
+            span: 0..1,
+        },
+        trailing_trivia: [
+            Token {
+                kind: Newline,
+                text: "\n",
+                span: 1..2,
+            },
+        ],
+    },
+    TokenWithTrivia {
+        leading_trivia: [
+            Token {
+                kind: Whitespace,
+                text: "            ",
+                span: 2..14,
+            },
+            Token {
+                kind: LineComment,
+                text: "// line comment",
+                span: 14..29,
+            },
+            Token {
+                kind: Newline,
+                text: "\n",
+                span: 29..30,
+            },
+            Token {
+                kind: Whitespace,
+                text: "            ",
+                span: 30..42,
+            },
+        ],
+        token: Token {
+            kind: Ident,
+            text: "h1",
+            span: 42..44,
+        },
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 44..45,
+            },
+        ],
+    },
+    TokenWithTrivia {
+        leading_trivia: [],
+        token: Token {
+            kind: LBrace,
+            text: "{",
+            span: 45..46,
+        },
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 46..47,
+            },
+            Token {
+                kind: BlockComment,
+                text: "/* block comment */",
+                span: 47..66,
+            },
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 66..67,
+            },
+        ],
+    },
+    TokenWithTrivia {
+        leading_trivia: [],
+        token: Token {
+            kind: Str,
+            text: "\"Hello world\"",
+            span: 67..80,
+        },
+        trailing_trivia: [
+            Token {
+                kind: Whitespace,
+                text: " ",
+                span: 80..81,
+            },
+        ],
+    },
+    TokenWithTrivia {
+        leading_trivia: [],
+        token: Token {
+            kind: RBrace,
+            text: "}",
+            span: 81..82,
+        },
+        trailing_trivia: [
+            Token {
+                kind: Newline,
+                text: "\n",
+                span: 82..83,
+            },
+        ],
+    },
+    TokenWithTrivia {
+        leading_trivia: [
+            Token {
+                kind: Whitespace,
+                text: "        ",
+                span: 83..91,
+            },
+        ],
+        token: Token {
+            kind: RBrace,
+            text: "}",
+            span: 91..92,
+        },
+        trailing_trivia: [],
+    },
+]

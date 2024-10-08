@@ -6,6 +6,12 @@ pub enum TokenKind {
     /// '\n' or '\r\n'
     Newline,
 
+    /// `// ...`
+    LineComment,
+
+    /// `/* ... */`
+    BlockComment,
+
     /// '{'
     LBrace,
 
@@ -21,6 +27,10 @@ pub enum TokenKind {
 
 impl TokenKind {
     pub fn is_trivia(self) -> bool {
-        matches!(self, TokenKind::Newline | TokenKind::Whitespace)
+        matches!(self, TokenKind::Newline | TokenKind::Whitespace) || self.is_comment()
+    }
+
+    pub fn is_comment(self) -> bool {
+        matches!(self, TokenKind::LineComment | TokenKind::BlockComment)
     }
 }

@@ -120,4 +120,17 @@ mod tests {
 
         insta::assert_debug_snapshot!(markup);
     }
+
+    #[test]
+    fn comments() {
+        let input = r#"{
+            // line comment
+            h1 { /* block comment */ "Hello world" }
+        }"#;
+
+        let lexer = Lexer::new(input, 0);
+        let tokens = lexer.collect::<Vec<_>>();
+
+        insta::assert_debug_snapshot!(tokens);
+    }
 }

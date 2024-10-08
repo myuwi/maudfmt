@@ -27,6 +27,8 @@ impl<'a> Lexer<'a> {
             c if is_space(c) => self.whitespace(),
             c if is_newline(c) => self.newline(),
             c if is_ident_start(c) => self.ident(),
+            '/' if self.s.eat_if('/') => self.line_comment(),
+            '/' if self.s.eat_if('*') => self.block_comment(),
             '{' => TokenKind::LBrace,
             '}' => TokenKind::RBrace,
             '"' => self.string(),
@@ -50,6 +52,18 @@ impl<'a> Lexer<'a> {
             self.s.eat_if('\n');
         }
         TokenKind::Newline
+    }
+
+    fn line_comment(&mut self) -> TokenKind {
+        self.s.eat_until(is_newline);
+        TokenKind::LineComment
+    }
+
+    // TODO: nested block comment
+    fn block_comment(&mut self) -> TokenKind {
+        self.s.eat_until("*/");
+        self.s.eat_if("*/");
+        TokenKind::BlockComment
     }
 
     fn ident(&mut self) -> TokenKind {
@@ -119,7 +133,7 @@ fn is_newline(c: char) -> bool {
 }
 
 fn is_trivia_start(c: char) -> bool {
-    is_space(c) || is_newline(c)
+    is_space(c) || is_newline(c) || c == '/'
 }
 
 fn is_ident_start(c: char) -> bool {
@@ -139,6 +153,19 @@ mod tests {
         let input = r#"{
             h1 { "Hello world" }
             p { "\"This string contains escaped quotes \"" }
+        }"#;
+
+        let lexer = Lexer::new(input, 0);
+        let tokens = lexer.collect::<Vec<_>>();
+
+        insta::assert_debug_snapshot!(tokens);
+    }
+
+    #[test]
+    fn comments() {
+        let input = r#"{
+            // line comment
+            h1 { /* block comment */ "Hello world" }
         }"#;
 
         let lexer = Lexer::new(input, 0);

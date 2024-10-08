@@ -1,0 +1,15 @@
+---
+source: src/format.rs
+expression: formatted
+---
+{ // line 1
+    // line 2
+    /* block 1 */ h1 /* block 2 */ // line 3
+    /* block 3 */ { // line 4
+        /* block 4 */ "Hello world" // line 5
+        /* block 5 */ /* block 6 */
+        // line 6
+    } // line 7
+    /* block 7 */ /* block 8 */
+    /* block 9 */
+}

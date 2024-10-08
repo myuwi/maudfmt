@@ -1,4 +1,4 @@
-use crate::token::TokenWithTrivia;
+use crate::token::{Token, TokenWithTrivia};
 
 #[derive(Debug)]
 pub struct Markup {
@@ -17,6 +17,33 @@ pub enum Node {
     Element(Element),
     Block(Block),
     Str(Str),
+}
+
+impl Node {
+    pub fn surrounding_trivia(&self) -> (&Vec<Token>, &Vec<Token>) {
+        match self {
+            Node::Element(element) => {
+                let leading_trivia = &element.tag.leading_trivia;
+                let trailing_trivia = match &element.body {
+                    ElementBody::Block(block) => &block.close_brace.trailing_trivia,
+                };
+
+                (leading_trivia, trailing_trivia)
+            }
+            Node::Block(block) => {
+                let leading_trivia = &block.open_brace.leading_trivia;
+                let trailing_trivia = &block.close_brace.trailing_trivia;
+
+                (leading_trivia, trailing_trivia)
+            }
+            Node::Str(str) => {
+                let leading_trivia = &str.0.leading_trivia;
+                let trailing_trivia = &str.0.trailing_trivia;
+
+                (leading_trivia, trailing_trivia)
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
