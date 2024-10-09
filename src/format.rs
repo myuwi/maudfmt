@@ -9,7 +9,14 @@ pub fn pretty_print(markup: &Markup, indent: usize, width: usize) -> String {
         .append(doc)
         .nest(indent as isize);
 
-    doc.pretty(width).to_string()
+    trim_trailing_whitespace(&doc.pretty(width).to_string())
+}
+
+fn trim_trailing_whitespace(s: &str) -> String {
+    s.lines()
+        .map(|line| line.trim_end())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -27,6 +34,31 @@ h1 {         "Hello "
 "Lorem ipsum"
 }
         }"#;
+
+        let markup = Parser::new(input, 0).parse().unwrap();
+        let formatted = pretty_print(&markup, 0, 100);
+
+        insta::assert_snapshot!(formatted);
+    }
+
+    #[test]
+    fn empty_lines() {
+        let input = r#"{
+
+
+h1 {
+
+
+    "Hello world"
+
+
+    "Lorem ipsum"
+
+
+}
+
+
+}"#;
 
         let markup = Parser::new(input, 0).parse().unwrap();
         let formatted = pretty_print(&markup, 0, 100);
@@ -56,6 +88,7 @@ h1 {         "Hello "
     #[test]
     fn comments_fold() {
         let input = r#"{ /* 1 */ h1
+
             /* 2 */
              {          
                  /* 3 */

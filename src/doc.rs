@@ -45,10 +45,26 @@ impl Doc for Block {
     }
 }
 
-// TODO: handle blank lines between nodes
 impl Doc for Vec<Node> {
     fn to_doc(&self) -> RcDoc {
-        RcDoc::concat(self.iter().map(|node| node.to_doc()))
+        RcDoc::concat(self.iter().enumerate().map(|(i, node)| {
+            let mut doc = node.to_doc();
+
+            let first_node = i == 0;
+            let leading_trivia = node.surrounding_trivia().0;
+
+            let leading_empty_line = !first_node
+                && leading_trivia
+                    .iter()
+                    .find(|t| t.kind != TokenKind::Whitespace)
+                    .is_some_and(|t| t.kind == TokenKind::Newline);
+
+            if leading_empty_line {
+                doc = RcDoc::line_().append(doc);
+            }
+
+            doc
+        }))
     }
 }
 
