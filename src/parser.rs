@@ -10,18 +10,23 @@ use crate::{
 
 pub type ParseResult<T> = Result<T, ParseError>;
 
+pub fn parse(input: &str) -> ParseResult<Markup> {
+    Parser::new(input).parse()
+}
+
 pub struct Parser<'a> {
     lexer: Peekable<Lexer<'a>>,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: &'a str, span_offset: usize) -> Self {
-        let lexer = Lexer::new(input, span_offset).peekable();
+    pub fn new(input: &'a str) -> Self {
+        let lexer = Lexer::new(input).peekable();
         Self { lexer }
     }
 
     pub fn parse(&mut self) -> ParseResult<Markup> {
-        self.parse_markup()
+        let root = self.parse_block()?;
+        Ok(Markup { root })
     }
 
     fn next(&mut self) -> Option<TokenWithTrivia> {
@@ -43,11 +48,6 @@ impl<'a> Parser<'a> {
 
     fn peek(&mut self) -> Option<&TokenWithTrivia> {
         self.lexer.peek()
-    }
-
-    fn parse_markup(&mut self) -> ParseResult<Markup> {
-        let root = self.parse_block()?;
-        Ok(Markup { root })
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
@@ -116,8 +116,7 @@ mod tests {
             }
         }"#;
 
-        let markup = Parser::new(input, 0).parse();
-
+        let markup = Parser::new(input).parse();
         insta::assert_debug_snapshot!(markup);
     }
 
@@ -128,8 +127,7 @@ mod tests {
             h1 { /* block comment */ "Hello world" }
         }"#;
 
-        let markup = Parser::new(input, 0).parse();
-
+        let markup = Parser::new(input).parse();
         insta::assert_debug_snapshot!(markup);
     }
 }

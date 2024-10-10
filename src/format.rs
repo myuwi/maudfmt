@@ -1,14 +1,30 @@
 use pretty::RcDoc;
 
-use crate::ast::Markup;
-use crate::doc::Doc;
+use crate::{
+    doc::Doc,
+    parser::{parse, ParseResult},
+};
 
-pub fn pretty_print(markup: &Markup, indent: usize, width: usize) -> String {
-    let doc = markup.to_doc();
-    let doc = RcDoc::text(" ".repeat(indent))
-        .append(doc)
-        .nest(indent as isize);
+pub fn format_input(input: &str, width: usize) -> ParseResult<String> {
+    format_with_indent(input, 0, width)
+}
 
+pub fn format_with_indent(input: &str, indent: usize, width: usize) -> ParseResult<String> {
+    let markup = parse(input)?;
+    let mut doc = markup.to_doc();
+
+    if indent > 0 {
+        doc = RcDoc::text(" ".repeat(indent))
+            .append(doc)
+            .nest(indent as isize);
+    }
+
+    let formatted = format_doc(doc, width);
+
+    Ok(formatted)
+}
+
+fn format_doc(doc: RcDoc, width: usize) -> String {
     trim_trailing_whitespace(&doc.pretty(width).to_string())
 }
 
@@ -22,7 +38,6 @@ fn trim_trailing_whitespace(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::Parser;
 
     #[test]
     fn basic() {
@@ -35,9 +50,7 @@ h1 {         "Hello "
 }
         }"#;
 
-        let markup = Parser::new(input, 0).parse().unwrap();
-        let formatted = pretty_print(&markup, 0, 100);
-
+        let formatted = format_input(input, 100).unwrap();
         insta::assert_snapshot!(formatted);
     }
 
@@ -60,9 +73,7 @@ h1 {
 
 }"#;
 
-        let markup = Parser::new(input, 0).parse().unwrap();
-        let formatted = pretty_print(&markup, 0, 100);
-
+        let formatted = format_input(input, 100).unwrap();
         insta::assert_snapshot!(formatted);
     }
 
@@ -79,9 +90,7 @@ h1 {
         /* block 7 */        /* block 8 */
         /* block 9 */ }"#;
 
-        let markup = Parser::new(input, 0).parse().unwrap();
-        let formatted = pretty_print(&markup, 0, 100);
-
+        let formatted = format_input(input, 100).unwrap();
         insta::assert_snapshot!(formatted);
     }
 
@@ -98,9 +107,7 @@ h1 {
             /* 6 */
         }"#;
 
-        let markup = Parser::new(input, 0).parse().unwrap();
-        let formatted = pretty_print(&markup, 0, 100);
-
+        let formatted = format_input(input, 100).unwrap();
         insta::assert_snapshot!(formatted);
     }
 }
