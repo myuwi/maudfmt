@@ -128,9 +128,8 @@ mod tests {
             h1 { /* block comment */ "Hello world" }
         }"#;
 
-        let lexer = Lexer::new(input, 0);
-        let tokens = lexer.collect::<Vec<_>>();
+        let markup = Parser::new(input, 0).parse();
 
-        insta::assert_debug_snapshot!(tokens);
+        insta::assert_debug_snapshot!(markup);
     }
 }
