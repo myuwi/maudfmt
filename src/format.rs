@@ -78,6 +78,22 @@ h1 {
     }
 
     #[test]
+    fn empty_block() {
+        let input = r#"{
+            h1 {
+
+            }
+            p {           }
+            p { /* 1 */
+            /* 2 */ }
+            p {  /* 3 */         }
+        }"#;
+
+        let formatted = format_input(input, 100).unwrap();
+        insta::assert_snapshot!(formatted);
+    }
+
+    #[test]
     fn too_many_comments() {
         let input = r#"{ // line 1
 // line 2

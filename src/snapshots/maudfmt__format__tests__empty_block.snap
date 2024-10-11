@@ -1,0 +1,12 @@
+---
+source: src/format.rs
+expression: formatted
+---
+{
+    h1 {}
+    p {}
+    p { /* 1 */
+        /* 2 */
+    }
+    p { /* 3 */ }
+}

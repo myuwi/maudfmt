@@ -20,16 +20,28 @@ impl Doc for Markup {
 
 impl Doc for Block {
     fn to_doc(&self) -> RcDoc {
-        let mut doc = RcDoc::nil()
-            .append(self.open_brace.token.text())
-            .append(handle_trailing_trivia(&self.open_brace.trailing_trivia))
-            .append(self.nodes.to_doc())
-            .append(handle_leading_trivia(
-                &self.close_brace.leading_trivia,
-                true,
-            ))
-            .nest(INDENT)
-            .append(self.close_brace.token.text());
+        let mut doc = RcDoc::nil().append(self.open_brace.token.text());
+
+        let has_children = !self.nodes.is_empty()
+            || self
+                .open_brace
+                .trailing_trivia
+                .iter()
+                .chain(self.close_brace.leading_trivia.iter())
+                .any(|t| t.kind.is_comment());
+
+        if has_children {
+            doc = doc
+                .append(handle_trailing_trivia(&self.open_brace.trailing_trivia))
+                .append(self.nodes.to_doc())
+                .append(handle_leading_trivia(
+                    &self.close_brace.leading_trivia,
+                    true,
+                ))
+                .nest(INDENT);
+        }
+
+        doc = doc.append(self.close_brace.token.text());
 
         let prefer_fold = !self
             .open_brace
