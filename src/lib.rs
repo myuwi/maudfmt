@@ -8,5 +8,7 @@ mod parser;
 mod span;
 mod token;
 
-pub use error::ParseError;
-pub use format::{format_with_indent, format_input};
+pub use error::{LexError, ParseError};
+pub use format::{format_input, format_with_indent};
+pub use lexer::Lexer;
+pub use parser::{parse, Parser};

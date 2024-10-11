@@ -1,8 +1,6 @@
-use std::iter::Peekable;
-
 use crate::{
     ast::{Block, Element, ElementBody, Markup, Node, Str},
-    error::ParseError,
+    error::{LexError, ParseError},
     kind::TokenKind,
     lexer::Lexer,
     token::TokenWithTrivia,
@@ -15,12 +13,12 @@ pub fn parse(input: &str) -> ParseResult<Markup> {
 }
 
 pub struct Parser<'a> {
-    lexer: Peekable<Lexer<'a>>,
+    lexer: Lexer<'a>,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(input: &'a str) -> Self {
-        let lexer = Lexer::new(input).peekable();
+        let lexer = Lexer::new(input);
         Self { lexer }
     }
 
@@ -29,12 +27,12 @@ impl<'a> Parser<'a> {
         Ok(Markup { root })
     }
 
-    fn next(&mut self) -> Option<TokenWithTrivia> {
-        self.lexer.next()
+    fn next(&mut self) -> Result<Option<TokenWithTrivia>, LexError> {
+        self.lexer.next_token()
     }
 
     fn expect_next(&mut self, expected_kind: TokenKind) -> ParseResult<TokenWithTrivia> {
-        let next = self.next().ok_or(ParseError::UnexpectedEndOfInput)?;
+        let next = self.next()?.ok_or(ParseError::UnexpectedEndOfInput)?;
 
         if next.token.kind == expected_kind {
             return Ok(next);
@@ -46,15 +44,15 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn peek(&mut self) -> Option<&TokenWithTrivia> {
-        self.lexer.peek()
+    fn peek(&mut self) -> Result<&Option<TokenWithTrivia>, LexError> {
+        self.lexer.peek_token()
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
         let open_brace = self.expect_next(TokenKind::LBrace)?;
         let mut nodes = Vec::new();
 
-        while let Some(t) = self.peek() {
+        while let Some(t) = self.peek()? {
             if t.token.kind == TokenKind::RBrace {
                 break;
             }
@@ -72,7 +70,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_node(&mut self) -> ParseResult<Node> {
-        let peeked = self.peek().ok_or(ParseError::UnexpectedEndOfInput)?;
+        let peeked = self
+            .peek()?
+            .as_ref()
+            .ok_or(ParseError::UnexpectedEndOfInput)?;
 
         match peeked.token.kind {
             TokenKind::LBrace => self.parse_block().map(Node::Block),

@@ -6,7 +6,7 @@ use std::{
 use miette::{miette, NamedSource, Report};
 use syn::{parse_file, spanned::Spanned, visit::Visit, Macro};
 
-use maudfmt::{format_with_indent, ParseError};
+use maudfmt::{format_with_indent, LexError, ParseError};
 
 struct MacroVisitor {
     ranges: Vec<Range<usize>>,
@@ -40,10 +40,15 @@ fn adjust_error_spans(e: ParseError, offset: usize) -> ParseError {
     let adjust_span = |s: Range<usize>| (s.start + offset)..(s.end + offset);
 
     match e {
+        ParseError::LexError(LexError::UnexpectedCharacter { span }) => {
+            ParseError::LexError(LexError::UnexpectedCharacter {
+                span: adjust_span(span),
+            })
+        }
         ParseError::UnexpectedToken { span } => ParseError::UnexpectedToken {
             span: adjust_span(span),
         },
-        e => e,
+        _ => e,
     }
 }
 
