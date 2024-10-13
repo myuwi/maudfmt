@@ -1,0 +1,10 @@
+---
+source: src/format.rs
+expression: formatted
+---
+{
+    input /**/; // a
+    input /**/ // asd
+    ; // b
+    input /**/;
+}

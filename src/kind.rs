@@ -18,6 +18,9 @@ pub enum TokenKind {
     /// '}'
     RBrace,
 
+    /// ';'
+    Semi,
+
     /// A valid maud identifier
     Ident,
 

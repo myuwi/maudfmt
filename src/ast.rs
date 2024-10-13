@@ -26,6 +26,7 @@ impl Node {
                 let leading_trivia = &element.tag.leading_trivia;
                 let trailing_trivia = match &element.body {
                     ElementBody::Block(block) => &block.close_brace.trailing_trivia,
+                    ElementBody::Void(semi) => &semi.trailing_trivia,
                 };
 
                 (leading_trivia, trailing_trivia)
@@ -55,6 +56,7 @@ pub struct Element {
 #[derive(Debug)]
 pub enum ElementBody {
     Block(Block),
+    Void(TokenWithTrivia),
 }
 
 #[derive(Debug)]

@@ -101,7 +101,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_element_body(&mut self) -> ParseResult<ElementBody> {
-        self.parse_block().map(ElementBody::Block)
+        let peeked = self
+            .peek()?
+            .as_ref()
+            .ok_or(ParseError::UnexpectedEndOfInput)?;
+
+        match peeked.token.kind {
+            TokenKind::LBrace => self.parse_block().map(ElementBody::Block),
+            TokenKind::Semi => self.expect_next(TokenKind::Semi).map(ElementBody::Void),
+            _ => Err(ParseError::UnexpectedToken {
+                span: peeked.token.span.clone(),
+            }),
+        }
     }
 }
 

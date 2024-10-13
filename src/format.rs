@@ -94,6 +94,21 @@ h1 {
     }
 
     #[test]
+    fn void_element() {
+        let input = r#"{
+            input /**/ ; // a
+            input /**/
+// asd
+                ; // b
+            input
+                /**/;
+        }"#;
+
+        let formatted = format_input(input, 100).unwrap();
+        insta::assert_snapshot!(formatted);
+    }
+
+    #[test]
     fn too_many_comments() {
         let input = r#"{ // line 1
 // line 2
