@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Block, Element, ElementBody, Markup, Node, Str},
+    ast::{Attribute, Block, Element, ElementBody, Markup, Node, Str},
     error::{LexError, ParseError},
     kind::TokenKind,
     lexer::Lexer,
@@ -91,13 +91,28 @@ impl<'a> Parser<'a> {
 
     fn parse_element(&mut self) -> ParseResult<Element> {
         let tag = self.parse_ident()?;
+        let attrs = self.parse_attrs()?;
         let body = self.parse_element_body()?;
 
-        Ok(Element { tag, body })
+        Ok(Element { tag, attrs, body })
     }
 
     fn parse_ident(&mut self) -> ParseResult<TokenWithTrivia> {
         self.expect_next(TokenKind::Ident)
+    }
+
+    fn parse_attrs(&mut self) -> ParseResult<Vec<Attribute>> {
+        let mut attrs = Vec::new();
+
+        while let Some(TokenKind::Ident) = self.peek()?.as_ref().map(|t| t.token.kind) {
+            attrs.push(Attribute {
+                name: self.expect_next(TokenKind::Ident)?,
+                eq: self.expect_next(TokenKind::Eq)?,
+                value: self.expect_next(TokenKind::Str)?,
+            })
+        }
+
+        Ok(attrs)
     }
 
     fn parse_element_body(&mut self) -> ParseResult<ElementBody> {

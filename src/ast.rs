@@ -50,6 +50,7 @@ impl Node {
 #[derive(Debug)]
 pub struct Element {
     pub tag: TokenWithTrivia,
+    pub attrs: Vec<Attribute>,
     pub body: ElementBody,
 }
 
@@ -57,6 +58,13 @@ pub struct Element {
 pub enum ElementBody {
     Block(Block),
     Void(TokenWithTrivia),
+}
+
+#[derive(Debug)]
+pub struct Attribute {
+    pub name: TokenWithTrivia,
+    pub eq: TokenWithTrivia,
+    pub value: TokenWithTrivia,
 }
 
 #[derive(Debug)]

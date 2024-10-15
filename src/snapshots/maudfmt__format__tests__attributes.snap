@@ -1,0 +1,24 @@
+---
+source: src/format.rs
+expression: formatted
+---
+{
+    h1 class="title" {}
+
+    button
+        type="button"
+        class="btn btn-small btn-primary"
+        x-lorem="lorem ipsum dolor sit amet, consectetur adipiscing elit"
+    {
+        "Small"
+    }
+
+    input type="text" id="small-input" class="input input-small";
+
+    input
+        /**/ type="text"
+        // small input
+        id="small-input" // line comment
+        class="input input-small"
+    ;
+}

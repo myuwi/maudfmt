@@ -18,6 +18,9 @@ pub enum TokenKind {
     /// '}'
     RBrace,
 
+    /// '='
+    Eq,
+
     /// ';'
     Semi,
 

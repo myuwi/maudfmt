@@ -1,7 +1,7 @@
 use pretty::RcDoc;
 
 use crate::{
-    ast::{Block, Element, ElementBody, Markup, Node, Str},
+    ast::{Attribute, Block, Element, ElementBody, Markup, Node, Str},
     kind::TokenKind,
     token::Token,
 };
@@ -32,13 +32,11 @@ impl Doc for Block {
 
         if has_children {
             doc = doc
-                .append(handle_trailing_trivia(
-                    &self.open_brace.trailing_trivia,
-                    true,
-                ))
+                .append(handle_trailing_trivia(&self.open_brace.trailing_trivia))
+                .append(RcDoc::line())
                 .append(self.nodes.to_doc())
                 .append(handle_leading_trivia(
-                    &self.close_brace.leading_trivia,
+                    self.close_brace.leading_trivia.iter(),
                     TriviaSpacing::Line,
                 ))
                 .nest(INDENT);
@@ -87,7 +85,7 @@ impl Doc for Node {
     fn to_doc(&self) -> RcDoc {
         let (leading_trivia, trailing_trivia) = self.surrounding_trivia();
 
-        let doc = handle_leading_trivia(leading_trivia, TriviaSpacing::Auto);
+        let doc = handle_leading_trivia(leading_trivia.iter(), TriviaSpacing::Auto);
 
         let doc = doc.append(match self {
             Node::Element(element) => element.to_doc(),
@@ -95,7 +93,9 @@ impl Doc for Node {
             Node::Str(str) => str.to_doc(),
         });
 
-        let doc = doc.append(handle_trailing_trivia(trailing_trivia, true));
+        let doc = doc
+            .append(handle_trailing_trivia(trailing_trivia))
+            .append(RcDoc::line());
 
         doc
     }
@@ -103,21 +103,61 @@ impl Doc for Node {
 
 impl Doc for Element {
     fn to_doc(&self) -> RcDoc {
-        let trailing_space = match &self.body {
-            ElementBody::Block(_) => true,
-            ElementBody::Void(t) => t.leading_trivia.iter().any(|t| t.kind.is_comment()),
+        let doc = RcDoc::text(self.tag.token.text())
+            .append(handle_trailing_trivia(&self.tag.trailing_trivia));
+
+        let doc = doc.append(self.attrs.to_doc()).nest(INDENT);
+
+        let line = match &self.body {
+            ElementBody::Block(_) => RcDoc::line(),
+            ElementBody::Void(t) => {
+                if t.leading_trivia.iter().any(|t| t.kind.is_comment()) {
+                    RcDoc::line()
+                } else {
+                    RcDoc::line_()
+                }
+            }
         };
 
-        let doc = RcDoc::text(self.tag.token.text())
-            .append(handle_trailing_trivia(
-                &self.tag.trailing_trivia,
-                trailing_space,
-            ))
-            .group();
-
+        let doc = doc.append(line).group();
         let doc = doc.append(self.body.to_doc());
 
         doc
+    }
+}
+
+impl Doc for Vec<Attribute> {
+    fn to_doc(&self) -> RcDoc {
+        let attrs_iter = self.iter();
+
+        if attrs_iter.len() > 0 {
+            RcDoc::concat(attrs_iter.map(|attr| {
+                let mut trivia = vec![
+                    &attr.name.leading_trivia,
+                    &attr.name.trailing_trivia,
+                    &attr.eq.leading_trivia,
+                    &attr.eq.trailing_trivia,
+                    &attr.value.leading_trivia,
+                    &attr.value.trailing_trivia,
+                ];
+
+                let trailing_trivia = trivia.pop();
+                let leading_trivia = trivia.into_iter().flatten();
+
+                let mut doc = handle_leading_trivia(leading_trivia, TriviaSpacing::Auto)
+                    .append(attr.name.token.text())
+                    .append(attr.eq.token.text())
+                    .append(attr.value.token.text());
+
+                if let Some(t) = trailing_trivia {
+                    doc = doc.append(handle_trailing_trivia(t));
+                }
+
+                RcDoc::line().append(doc)
+            }))
+        } else {
+            RcDoc::nil()
+        }
     }
 }
 
@@ -125,12 +165,14 @@ impl Doc for ElementBody {
     fn to_doc(&self) -> RcDoc {
         match self {
             ElementBody::Block(block) => {
-                let doc =
-                    handle_leading_trivia(&block.open_brace.leading_trivia, TriviaSpacing::Auto);
+                let doc = handle_leading_trivia(
+                    block.open_brace.leading_trivia.iter(),
+                    TriviaSpacing::Auto,
+                );
                 doc.append(block.to_doc())
             }
             ElementBody::Void(token) => {
-                let doc = handle_leading_trivia(&token.leading_trivia, TriviaSpacing::None);
+                let doc = handle_leading_trivia(token.leading_trivia.iter(), TriviaSpacing::None);
                 doc.append(token.token.text())
             }
         }
@@ -149,11 +191,13 @@ enum TriviaSpacing {
     None,
 }
 
-fn handle_leading_trivia(leading_trivia: &[Token], spacing: TriviaSpacing) -> RcDoc {
+fn handle_leading_trivia<'a, I>(leading_trivia: I, spacing: TriviaSpacing) -> RcDoc<'a>
+where
+    I: Iterator<Item = &'a Token> + Clone,
+{
     let mut doc = RcDoc::nil();
 
     let mut trivia_iter = leading_trivia
-        .iter()
         .filter(|t| t.kind != TokenKind::Whitespace)
         .peekable();
 
@@ -193,29 +237,23 @@ fn handle_leading_trivia(leading_trivia: &[Token], spacing: TriviaSpacing) -> Rc
     doc
 }
 
-fn handle_trailing_trivia(trailing_trivia: &[Token], trailing_space: bool) -> RcDoc {
-    let trailing_comments = trailing_trivia
-        .iter()
-        .filter(|t| t.kind.is_comment())
-        .collect::<Vec<_>>();
+/// Acts like `nil` but forces the current group to break onto multiple lines
+fn break_group<'a>() -> RcDoc<'a> {
+    RcDoc::nil().flat_alt(RcDoc::hardline())
+}
 
-    let doc = RcDoc::concat(
+fn handle_trailing_trivia(trailing_trivia: &[Token]) -> RcDoc {
+    let mut trailing_comments = trailing_trivia.iter().filter(|t| t.kind.is_comment());
+
+    let mut doc = RcDoc::concat(
         trailing_comments
-            .iter()
-            .flat_map(|t| vec![RcDoc::space(), RcDoc::text(t.text())]),
+            .clone()
+            .map(|t| RcDoc::space().append(t.text())),
     );
 
-    let has_line_comment = trailing_comments
-        .iter()
-        .any(|t| t.kind == TokenKind::LineComment);
-
-    let doc = doc.append(if has_line_comment {
-        RcDoc::hardline()
-    } else if trailing_space {
-        RcDoc::line()
-    } else {
-        RcDoc::line_()
-    });
+    if trailing_comments.any(|t| t.kind == TokenKind::LineComment) {
+        doc = doc.append(break_group());
+    }
 
     doc
 }

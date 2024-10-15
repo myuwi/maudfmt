@@ -91,6 +91,7 @@ impl<'a> Lexer<'a> {
             '/' if self.s.eat_if('*') => self.block_comment()?,
             '{' => TokenKind::LBrace,
             '}' => TokenKind::RBrace,
+            '=' => TokenKind::Eq,
             ';' => TokenKind::Semi,
             '"' => self.string()?,
             _ => return Err(LexError::UnexpectedCharacter { span: start..start }),

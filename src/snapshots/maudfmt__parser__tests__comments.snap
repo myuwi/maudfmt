@@ -59,6 +59,7 @@ Ok(
                                 },
                             ],
                         },
+                        attrs: [],
                         body: Block(
                             Block {
                                 open_brace: TokenWithTrivia {

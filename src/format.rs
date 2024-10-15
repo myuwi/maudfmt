@@ -55,6 +55,31 @@ h1 {         "Hello "
     }
 
     #[test]
+    fn attributes() {
+        let input = r#"{
+            h1
+                class
+                =
+                "title"
+                {}
+
+            button type="button"
+                class="btn btn-small btn-primary"
+                x-lorem="lorem ipsum dolor sit amet, consectetur adipiscing elit" {
+                    "Small" }
+
+            input type="text" id="small-input" class="input input-small";
+
+            input type/**/="text" id // small input
+                ="small-input" // line comment
+                               class="input input-small";
+            }"#;
+
+        let formatted = format_input(input, 100).unwrap();
+        insta::assert_snapshot!(formatted);
+    }
+
+    #[test]
     fn empty_lines() {
         let input = r#"{
 
@@ -136,6 +161,18 @@ h1 {
                  /* 5 */
             }
             /* 6 */
+        }"#;
+
+        let formatted = format_input(input, 100).unwrap();
+        insta::assert_snapshot!(formatted);
+    }
+
+    #[test]
+    fn trailing_line_comment() {
+        let input = r#"{ h1 // 2
+            {// 3
+                "Hello world" // 4
+            } // 5
         }"#;
 
         let formatted = format_input(input, 100).unwrap();
