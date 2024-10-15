@@ -20,7 +20,7 @@ impl Doc for Markup {
 
 impl Doc for Block {
     fn to_doc(&self) -> RcDoc {
-        let mut doc = RcDoc::nil().append(self.open_brace.token.text());
+        let mut doc = RcDoc::text(self.open_brace.token.text());
 
         let has_children = !self.nodes.is_empty()
             || self
@@ -33,8 +33,8 @@ impl Doc for Block {
         if has_children {
             doc = doc
                 .append(handle_trailing_trivia(&self.open_brace.trailing_trivia))
-                .append(RcDoc::line())
                 .append(self.nodes.to_doc())
+                .append(RcDoc::line())
                 .append(handle_leading_trivia(
                     self.close_brace.leading_trivia.iter(),
                     TriviaSpacing::Line,
@@ -85,7 +85,12 @@ impl Doc for Node {
     fn to_doc(&self) -> RcDoc {
         let (leading_trivia, trailing_trivia) = self.surrounding_trivia();
 
-        let doc = handle_leading_trivia(leading_trivia.iter(), TriviaSpacing::Auto);
+        let doc = RcDoc::line();
+
+        let doc = doc.append(handle_leading_trivia(
+            leading_trivia.iter(),
+            TriviaSpacing::Auto,
+        ));
 
         let doc = doc.append(match self {
             Node::Element(element) => element.to_doc(),
@@ -93,9 +98,7 @@ impl Doc for Node {
             Node::Str(str) => str.to_doc(),
         });
 
-        let doc = doc
-            .append(handle_trailing_trivia(trailing_trivia))
-            .append(RcDoc::line());
+        let doc = doc.append(handle_trailing_trivia(trailing_trivia));
 
         doc
     }
@@ -217,13 +220,13 @@ where
                     match spacing {
                         TriviaSpacing::Line => RcDoc::line(),
                         TriviaSpacing::Auto if trailing_newline => RcDoc::line(),
-                        TriviaSpacing::Auto => RcDoc::softline(),
-                        TriviaSpacing::None => RcDoc::softline_(),
+                        TriviaSpacing::Auto => RcDoc::space(),
+                        TriviaSpacing::None => RcDoc::nil(),
                     }
                 } else if trailing_newline {
                     RcDoc::line()
                 } else {
-                    RcDoc::softline()
+                    RcDoc::space()
                 };
 
                 text.append(line)
